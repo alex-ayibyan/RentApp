@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:rent_app/Device/add_device_screen.dart';
 import 'package:rent_app/Device/device_detail_screen.dart';
+import 'package:rent_app/Device/device_map_screen.dart';
 import 'package:rent_app/firebase_options.dart';
 import 'package:rent_app/Authentication/login_screen.dart';
 import 'package:rent_app/Authentication/register_screen.dart';
@@ -58,6 +59,7 @@ class MyApp extends StatelessWidget {
         '/home': (context) => HomeScreen(),
         '/add-device': (context) => AddDeviceScreen(),
         '/device-details': (context) => DeviceDetailScreen(deviceId: ModalRoute.of(context)!.settings.arguments as String),
+        '/device-map': (context) => DeviceMapScreen(),
       },
     );
   }
