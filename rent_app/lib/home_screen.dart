@@ -16,7 +16,24 @@ class HomeScreenState extends State<HomeScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late User _user;
   List<Map<String, dynamic>> _devices = [];
+  List<Map<String, dynamic>> _filteredDevices = [];
   bool _isLoading = true;
+  
+  final List<String> _categories = [
+    'All',
+    'Electronics',
+    'Tools',
+    'Furniture',
+    'Vehicles',
+    'Sports Equipment',
+    'Clothing',
+    'Books',
+    'Kitchen Appliances',
+    'Musical Instruments',
+    'Other'
+  ];
+
+  String _selectedCategory = 'All';
 
   @override
   void initState() {
@@ -29,11 +46,26 @@ class HomeScreenState extends State<HomeScreen> {
     setState(() => _isLoading = true);
     try {
       _devices = await _fetchDevices();
+      _filterDevicesByCategory(_selectedCategory);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  void _filterDevicesByCategory(String category) {
+    setState(() {
+      _selectedCategory = category;
+      
+      if (category == 'All') {
+        _filteredDevices = List.from(_devices);
+      } else {
+        _filteredDevices = _devices.where((device) => 
+          device['category'] == category
+        ).toList();
+      }
+    });
   }
 
   Future<void> _logOut() async {
@@ -48,6 +80,9 @@ class HomeScreenState extends State<HomeScreen> {
       return snapshot.docs.map((doc) {
         var data = doc.data();
         data['id'] = doc.id;
+        if (data['category'] == null) {
+          data['category'] = 'Other';
+        }
         return data;
       }).toList();
     } catch (e) {
@@ -91,13 +126,56 @@ class HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadDevices,
-        child: _isLoading 
-          ? const Center(child: CircularProgressIndicator())
-          : _devices.isEmpty 
-            ? _buildEmptyState()
-            : _buildDeviceList(),
+      body: Column(
+        children: [
+          Container(
+            height: 60,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _categories.length,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              itemBuilder: (context, index) {
+                final category = _categories[index];
+                final isSelected = category == _selectedCategory;
+                
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: FilterChip(
+                    label: Text(category),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      if (selected) {
+                        _filterDevicesByCategory(category);
+                      }
+                    },
+                    selectedColor: Colors.deepOrangeAccent,
+                    checkmarkColor: Colors.white,
+                    labelStyle: TextStyle(
+                      color: isSelected ? Colors.white : Colors.black87,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    backgroundColor: Colors.grey.shade200,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadDevices,
+              child: _isLoading 
+                ? const Center(child: CircularProgressIndicator())
+                : _devices.isEmpty 
+                  ? _buildEmptyState()
+                  : _filteredDevices.isEmpty
+                    ? _buildNoCategoryItemsState()
+                    : _buildDeviceList(),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
@@ -154,13 +232,51 @@ class HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+  
+  Widget _buildNoCategoryItemsState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.category,
+            size: 80,
+            color: Colors.grey,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No $_selectedCategory items found',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Try selecting a different category or add new devices',
+            style: TextStyle(color: Colors.grey),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () => _filterDevicesByCategory('All'),
+            icon: const Icon(Icons.all_inclusive),
+            label: const Text('Show All Devices'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.deepOrangeAccent,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildDeviceList() {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      itemCount: _devices.length,
+      itemCount: _filteredDevices.length,
       itemBuilder: (context, index) {
-        var device = _devices[index];
+        var device = _filteredDevices[index];
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
           shape: RoundedRectangleBorder(
@@ -241,6 +357,24 @@ class HomeScreenState extends State<HomeScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
+
+                        if (device['category'] != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            margin: const EdgeInsets.only(bottom: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              device['category'],
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ),
+                          
                         Text(
                           device['description'] ?? 'No description',
                           style: TextStyle(color: Colors.grey.shade600),
