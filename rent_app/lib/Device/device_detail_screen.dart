@@ -42,7 +42,7 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
     _loadDeviceData();
   }
 
-  Future<void> _loadDeviceData() async {
+Future<void> _loadDeviceData() async {
   if (!mounted) return;
   setState(() => _isLoading = true);
 
@@ -173,11 +173,36 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
     
     return categoryColors[category] ?? Colors.deepOrangeAccent;
   }
+  
+  double? _getLatitude(dynamic location) {
+    if (location == null) return null;
+    if (location is GeoPoint) {
+      return location.latitude;
+    } else if (location is Map) {
+      return (location['latitude'] as num?)?.toDouble();
+    }
+    return null;
+  }
+  
+  double? _getLongitude(dynamic location) {
+    if (location == null) return null;
+    if (location is GeoPoint) {
+      return location.longitude;
+    } else if (location is Map) {
+      return (location['longitude'] as num?)?.toDouble();
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
     final String? category = _deviceData?['category'];
     final Color categoryColor = _getCategoryColor(category);
+    
+    final dynamic locationData = _deviceData?['location'];
+    final double? latitude = _getLatitude(locationData);
+    final double? longitude = _getLongitude(locationData);
+    final bool hasValidLocation = latitude != null && longitude != null;
     
     return Scaffold(
       appBar: AppBar(
@@ -250,7 +275,7 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
                                 ),
                               ),
                             ),
-                          
+
                           if (category != null)
                             Positioned(
                               top: 16,
@@ -258,7 +283,7 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                 decoration: BoxDecoration(
-                                  color: categoryColor.withValues(),
+                                  color: categoryColor,
                                   borderRadius: BorderRadius.circular(20),
                                   boxShadow: [
                                     BoxShadow(
@@ -290,7 +315,7 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
                             ),
                         ],
                       ),
-
+                      
                       Padding(
                         padding: const EdgeInsets.all(16),
                         child: Column(
@@ -334,10 +359,10 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
                                 padding: const EdgeInsets.all(16),
                                 margin: const EdgeInsets.only(bottom: 20),
                                 decoration: BoxDecoration(
-                                  color: categoryColor.withValues(),
+                                  color: categoryColor,
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: categoryColor.withValues(),
+                                    color: categoryColor,
                                     width: 1,
                                   ),
                                 ),
@@ -400,7 +425,7 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
                             ),
                             
                             const SizedBox(height: 24),
-                            
+
                             Row(
                               children: [
                                 const Icon(
@@ -465,7 +490,7 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
                             
                             const SizedBox(height: 24),
                             
-                            if (_deviceData!['location'] != null)
+                            if (hasValidLocation)
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -505,10 +530,7 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
                                     ),
                                     child: FlutterMap(
                                       options: MapOptions(
-                                        initialCenter: LatLng(
-                                          _deviceData!['location']['latitude'],
-                                          _deviceData!['location']['longitude'],
-                                        ),
+                                        initialCenter: LatLng(latitude, longitude),
                                         initialZoom: 13.0,
                                         interactionOptions: const InteractionOptions(
                                           flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
@@ -524,10 +546,7 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
                                             Marker(
                                               width: 40.0,
                                               height: 40.0,
-                                              point: LatLng(
-                                                _deviceData!['location']['latitude'],
-                                                _deviceData!['location']['longitude'],
-                                              ),
+                                              point: LatLng(latitude, longitude),
                                               child: Icon(
                                                 Icons.location_on,
                                                 color: categoryColor,

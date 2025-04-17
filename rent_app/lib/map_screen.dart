@@ -51,13 +51,16 @@ class DeviceMapScreenState extends State<DeviceMapScreen> {
   }
 
   void _centerMapOnDevices() {
-    List<LatLng> validLocations = _devices
-        .where((device) => device['location'] != null)
-        .map((device) => LatLng(
-              device['location']['latitude'],
-              device['location']['longitude'],
-            ))
-        .toList();
+    List<LatLng> validLocations = [];
+    
+    for (var device in _devices) {
+      if (device['location'] != null) {
+        if (device['location'] is GeoPoint) {
+          GeoPoint geoPoint = device['location'];
+          validLocations.add(LatLng(geoPoint.latitude, geoPoint.longitude));
+        }
+      }
+    }
 
     if (validLocations.isEmpty) {
       _mapController.move(_defaultCenter, 9.0);
@@ -99,7 +102,7 @@ class DeviceMapScreenState extends State<DeviceMapScreen> {
     return distanceInKilometers;
   }
 
-  double calculateDistanceEquirectangular(double lat1, double lon1, double lat2, double lon2) {
+  double calculateDistanceRectangle(double lat1, double lon1, double lat2, double lon2) {
     final Distance distance = Distance();
     final LatLng point1 = LatLng(lat1, lon1);
     final LatLng point2 = LatLng(lat2, lon2);
@@ -119,13 +122,13 @@ class DeviceMapScreenState extends State<DeviceMapScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Apparaten op de Kaart', style: TextStyle(color: Colors.white)),
+        title: Text('Devices on the map', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.black87,
         actions: [
           IconButton(
             icon: Icon(Icons.center_focus_strong, color: Colors.white),
             onPressed: _centerMapOnDevices,
-            tooltip: 'Centreer kaart op apparaten',
+            tooltip: 'Center map',
           ),
         ],
       ),
@@ -146,8 +149,7 @@ class DeviceMapScreenState extends State<DeviceMapScreen> {
             ),
             children: [
               TileLayer(
-                urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                subdomains: const ['a', 'b', 'c'],
+                urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               ),
               MarkerLayer(
                 markers: _generateMarkers(),
@@ -160,7 +162,7 @@ class DeviceMapScreenState extends State<DeviceMapScreen> {
           _fetchDevices().then((_) => _centerMapOnDevices());
         },
         backgroundColor: Colors.deepOrangeAccent,
-        tooltip: 'Ververs kaart',
+        tooltip: 'Refresh map',
         child: Icon(Icons.refresh),
       ),
     );
@@ -170,61 +172,64 @@ class DeviceMapScreenState extends State<DeviceMapScreen> {
     List<Marker> markers = [];
 
     for (var device in _devices) {
-      if (device['location'] != null &&
-          device['location']['latitude'] != null &&
-          device['location']['longitude'] != null) {
-
-        markers.add(
-          Marker(
-            width: 120.0,
-            height: 70,
-            point: LatLng(
-              device['location']['latitude'],
-              device['location']['longitude'],
-            ),
-            child: GestureDetector(
-              onTap: () {
-                Navigator.pushNamed(
-                  context,
-                  '/device-details',
-                  arguments: device['id'],
-                );
-              },
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.location_on,
-                    color: Colors.deepOrangeAccent,
-                    size: 40,
-                  ),
-                  Container(
-                    padding: EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(),
-                      borderRadius: BorderRadius.circular(4),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black26,
-                          blurRadius: 2,
-                          offset: Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                    child: Text(
-                      device['name'] ?? 'Onbekend',
-                      style: TextStyle(
-                        color: Colors.black87,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+      if (device['location'] != null) {
+        if (device['location'] is GeoPoint) {
+          GeoPoint geoPoint = device['location'];
+          
+          markers.add(
+            Marker(
+              width: 120.0,
+              height: 70,
+              point: LatLng(
+                geoPoint.latitude,
+                geoPoint.longitude,
               ),
-            ),
-          )
-        );
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    '/device-details',
+                    arguments: device['id'],
+                  );
+                },
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.location_on,
+                      color: Colors.deepOrangeAccent,
+                      size: 40,
+                    ),
+                    Container(
+                      padding: EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 2,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        device['name'] ?? 'Unknown',
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          );
+        } else {
+          debugPrint("Device ${device['name']} has location in incorrect format");
+        }
       } else {
         debugPrint("Device ${device['name']} has no location data");
       }
