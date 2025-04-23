@@ -18,7 +18,7 @@ class HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _devices = [];
   List<Map<String, dynamic>> _filteredDevices = [];
   bool _isLoading = true;
-  
+
   final List<String> _categories = [
     'All',
     'Electronics',
@@ -57,11 +57,11 @@ class HomeScreenState extends State<HomeScreen> {
   void _filterDevicesByCategory(String category) {
     setState(() {
       _selectedCategory = category;
-      
+
       if (category == 'All') {
         _filteredDevices = List.from(_devices);
       } else {
-        _filteredDevices = _devices.where((device) => 
+        _filteredDevices = _devices.where((device) =>
           device['category'] == category
         ).toList();
       }
@@ -93,8 +93,8 @@ class HomeScreenState extends State<HomeScreen> {
 
   String _formatUsername(String email) {
     return email.split('@')[0].split('.')
-        .map((name) => name.isNotEmpty 
-            ? name[0].toUpperCase() + name.substring(1) 
+        .map((name) => name.isNotEmpty
+            ? name[0].toUpperCase() + name.substring(1)
             : '')
         .join(' ');
   }
@@ -106,8 +106,8 @@ class HomeScreenState extends State<HomeScreen> {
         title: Text(
           _formatUsername(_user.email ?? ""),
           style: const TextStyle(
-            fontSize: 20, 
-            fontWeight: FontWeight.bold, 
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
             color: Colors.white
           )
         ),
@@ -138,7 +138,7 @@ class HomeScreenState extends State<HomeScreen> {
               itemBuilder: (context, index) {
                 final category = _categories[index];
                 final isSelected = category == _selectedCategory;
-                
+
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: FilterChip(
@@ -166,9 +166,9 @@ class HomeScreenState extends State<HomeScreen> {
           Expanded(
             child: RefreshIndicator(
               onRefresh: _loadDevices,
-              child: _isLoading 
+              child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _devices.isEmpty 
+                : _devices.isEmpty
                   ? _buildEmptyState()
                   : _filteredDevices.isEmpty
                     ? _buildNoCategoryItemsState()
@@ -183,7 +183,7 @@ class HomeScreenState extends State<HomeScreen> {
             context,
             MaterialPageRoute(builder: (context) => const AddDeviceScreen()),
           );
-          
+
           if (result == true) {
             _loadDevices();
           }
@@ -232,7 +232,7 @@ class HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-  
+
   Widget _buildNoCategoryItemsState() {
     return Center(
       child: Column(
@@ -374,7 +374,7 @@ class HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                           ),
-                          
+
                         Text(
                           device['description'] ?? 'No description',
                           style: TextStyle(color: Colors.grey.shade600),
@@ -390,6 +390,28 @@ class HomeScreenState extends State<HomeScreen> {
                               color: Colors.deepOrangeAccent,
                             ),
                           ),
+
+                        if (device['available'] != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Row(
+                              children: [
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    device['available'] == true ? 'Available' : 'Not Available',
+                                    style: const TextStyle(
+                                      color: Colors.deepOrangeAccent,
+                                      fontSize: 12,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+
                         if (device['location'] != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),

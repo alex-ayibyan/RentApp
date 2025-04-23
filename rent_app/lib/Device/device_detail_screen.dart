@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:rent_app/Device/device_edit_screen.dart';
 
 class DeviceDetailScreen extends StatefulWidget {
   final String deviceId;
@@ -212,14 +213,36 @@ Future<void> _loadDeviceData() async {
         ),
         backgroundColor: Colors.black87,
         actions: [
-          if (_isOwner)
+          if (_isOwner) ...[
+            IconButton(
+              icon: const Icon(Icons.edit, color: Colors.white),
+              tooltip: 'Edit device',
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DeviceEditScreen(
+                      deviceId: widget.deviceId,
+                      existingData: _deviceData!,
+                    ),
+                  ),
+                );
+
+                if (result == true) {
+                  // Reload the device data after editing
+                  _loadDeviceData();
+                }
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.delete, color: Colors.white),
               onPressed: _deleteDevice,
               tooltip: 'Delete device',
             ),
+          ],
         ],
       ),
+
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _deviceData == null
@@ -489,7 +512,37 @@ Future<void> _loadDeviceData() async {
                               ),
                             
                             const SizedBox(height: 24),
-                            
+
+                            if (_deviceData!['available'] != null && _deviceData!['available'] is bool)
+                              Row(
+                                children: [
+                                  Icon(
+                                    _deviceData!['available'] == true ? Icons.check_circle : Icons.cancel,
+                                    size: 20,
+                                    color: _deviceData!['available'] == true ? Colors.green : Colors.red,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _deviceData!['available'] == true ? 'Available' : 'Not Available',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            else
+                              const Text(
+                                'Availability info not provided.',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey,
+                                ),
+                              ),
+
+
+
                             if (hasValidLocation)
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,

@@ -19,18 +19,19 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final ImagePicker _picker = ImagePicker();
-  
+
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
-  
+
   File? _imageFile;
   bool _isLoading = false;
   bool _useCurrentLocation = false;
+  bool _isAvailable = true;
   GeoPoint? _location;
   String? _address;
-  
+
   final List<String> _categories = [
     'Electronics',
     'Tools',
@@ -65,11 +66,11 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
 
   Future<String?> _uploadImage() async {
     if (_imageFile == null) return null;
-    
+
     try {
       final String fileName = '${DateTime.now().millisecondsSinceEpoch}_${_auth.currentUser!.uid}';
       final Reference storageRef = _storage.ref().child('device_images/$fileName');
-      
+
       await storageRef.putFile(_imageFile!);
       return await storageRef.getDownloadURL();
     } catch (e) {
@@ -80,11 +81,11 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
 
   Future<void> _getCurrentLocation() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final locationService = location_service.Location();
       bool serviceEnabled = await locationService.serviceEnabled();
-      
+
       if (!serviceEnabled) {
         serviceEnabled = await locationService.requestService();
         if (!serviceEnabled) {
@@ -93,7 +94,7 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
           return;
         }
       }
-      
+
       var permissionStatus = await locationService.hasPermission();
       if (permissionStatus == location_service.PermissionStatus.denied) {
         permissionStatus = await locationService.requestPermission();
@@ -103,28 +104,28 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
           return;
         }
       }
-      
+
       final locationData = await locationService.getLocation();
       final GeoPoint geoPoint = GeoPoint(locationData.latitude!, locationData.longitude!);
 
       List<Placemark> placemarks = await placemarkFromCoordinates(
-        locationData.latitude!, 
-        locationData.longitude!
+          locationData.latitude!,
+          locationData.longitude!
       );
-      
+
       String fullAddress = 'Unknown location';
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks.first;
         fullAddress = '${place.street}, ${place.locality}, ${place.country}';
       }
-      
+
       setState(() {
         _location = geoPoint;
         _address = fullAddress;
         _useCurrentLocation = true;
         _isLoading = false;
       });
-      
+
       _showSnackBar('Location added: $_address');
     } catch (e) {
       debugPrint('Error getting location: $e');
@@ -135,20 +136,21 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
 
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message))
+        SnackBar(content: Text(message))
     );
   }
 
   Future<void> _saveDevice() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() => _isLoading = true);
-    
+
     try {
       String? imageUrl = await _uploadImage();
 
       Map<String, dynamic> deviceData = {
         'name': _nameController.text.trim(),
+        'available': _isAvailable, // correct bool field
         'description': _descriptionController.text.trim(),
         'pricePerDay': double.parse(_priceController.text.trim()),
         'ownerId': _auth.currentUser!.uid,
@@ -157,14 +159,14 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
         'image': imageUrl,
         'category': _selectedCategory,
       };
-      
+
       if (_useCurrentLocation && _location != null) {
         deviceData['location'] = _location;
         deviceData['address'] = _address;
       }
-      
+
       await _firestore.collection('devices').add(deviceData);
-      
+
       if (!mounted) return;
       Navigator.pop(context, true);
     } catch (e) {
@@ -179,199 +181,222 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Add New Device', 
-          style: TextStyle(color: Colors.white)
+            'Add New Device',
+            style: TextStyle(color: Colors.white)
         ),
         backgroundColor: Colors.black87,
       ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator())
-        : SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  GestureDetector(
-                    onTap: _pickImage,
-                    child: Container(
-                      height: 200,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade400),
-                      ),
-                      child: _imageFile != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.file(
-                              _imageFile!,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        : Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.add_a_photo,
-                                size: 48,
-                                color: Colors.grey.shade600,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Add Device Photo',
-                                style: TextStyle(
-                                  color: Colors.grey.shade600,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
-                          ),
-                    ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade400),
                   ),
-                  const SizedBox(height: 24),
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Device Name',
-                      prefixIcon: Icon(Icons.devices),
+                  child: _imageFile != null
+                      ? ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(
+                      _imageFile!,
+                      fit: BoxFit.cover,
                     ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter a device name';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  DropdownButtonFormField<String>(
-                    value: _selectedCategory,
-                    decoration: const InputDecoration(
-                      labelText: 'Category',
-                      prefixIcon: Icon(Icons.category),
-                    ),
-                    items: _categories.map((String category) {
-                      return DropdownMenuItem<String>(
-                        value: category,
-                        child: Text(category),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      if (newValue != null) {
-                        setState(() {
-                          _selectedCategory = newValue;
-                        });
-                      }
-                    },
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _descriptionController,
-                    decoration: const InputDecoration(
-                      labelText: 'Description',
-                      prefixIcon: Icon(Icons.description),
-                    ),
-                    maxLines: 3,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter a description';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _priceController,
-                    decoration: const InputDecoration(
-                      labelText: 'Price per Day (€)',
-                      prefixIcon: Icon(Icons.euro),
-                    ),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter a price';
-                      }
-                      try {
-                        double price = double.parse(value);
-                        if (price <= 0) {
-                          return 'Price must be greater than zero';
-                        }
-                      } catch (e) {
-                        return 'Please enter a valid number';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-
-                  Row(
+                  )
+                      : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Expanded(
-                        child: Text(
-                          _useCurrentLocation 
-                              ? 'Location: ${_address ?? 'Selected'}'
-                              : 'Add device location?',
-                          style: TextStyle(
-                            color: _useCurrentLocation 
-                                ? Colors.deepOrangeAccent 
-                                : Colors.grey.shade600,
-                            fontWeight: _useCurrentLocation 
-                                ? FontWeight.bold 
-                                : FontWeight.normal,
-                          ),
-                        ),
+                      Icon(
+                        Icons.add_a_photo,
+                        size: 48,
+                        color: Colors.grey.shade600,
                       ),
-                      Switch(
-                        value: _useCurrentLocation,
-                        activeColor: Colors.deepOrangeAccent,
-                        onChanged: (value) {
-                          setState(() {
-                            _useCurrentLocation = value;
-                            if (value && _location == null) {
-                              _getCurrentLocation();
-                            }
-                          });
-                        },
+                      const SizedBox(height: 8),
+                      Text(
+                        'Add Device Photo',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 16,
+                        ),
                       ),
                     ],
                   ),
-                  if (_useCurrentLocation && _location == null)
-                    ElevatedButton.icon(
-                      onPressed: _getCurrentLocation,
-                      icon: const Icon(Icons.my_location),
-                      label: const Text('Get Current Location'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepOrangeAccent,
-                        foregroundColor: Colors.white,
-                      ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Device Name',
+                  prefixIcon: Icon(Icons.devices),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter a device name';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              Row(
+                children: [
+                  const Icon(Icons.event_available, color: Colors.grey),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      'Available',
+                      style: TextStyle(fontSize: 16),
                     ),
-                  
-                  const SizedBox(height: 32),
-                  ElevatedButton(
-                    onPressed: _saveDevice,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepOrangeAccent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'SAVE DEVICE',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                  ),
+                  Switch(
+                    value: _isAvailable,
+                    activeColor: Colors.green,
+                    onChanged: (value) {
+                      setState(() {
+                        _isAvailable = value;
+                      });
+                    },
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 16),
+
+              DropdownButtonFormField<String>(
+                value: _selectedCategory,
+                decoration: const InputDecoration(
+                  labelText: 'Category',
+                  prefixIcon: Icon(Icons.category),
+                ),
+                items: _categories.map((String category) {
+                  return DropdownMenuItem<String>(
+                    value: category,
+                    child: Text(category),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  if (newValue != null) {
+                    setState(() {
+                      _selectedCategory = newValue;
+                    });
+                  }
+                },
+              ),
+
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _descriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  prefixIcon: Icon(Icons.description),
+                ),
+                maxLines: 3,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter a description';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _priceController,
+                decoration: const InputDecoration(
+                  labelText: 'Price per Day (€)',
+                  prefixIcon: Icon(Icons.euro),
+                ),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter a price';
+                  }
+                  try {
+                    double price = double.parse(value);
+                    if (price <= 0) {
+                      return 'Price must be greater than zero';
+                    }
+                  } catch (e) {
+                    return 'Please enter a valid number';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 24),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _useCurrentLocation
+                          ? 'Location: ${_address ?? 'Selected'}'
+                          : 'Add device location?',
+                      style: TextStyle(
+                        color: _useCurrentLocation
+                            ? Colors.deepOrangeAccent
+                            : Colors.grey.shade600,
+                        fontWeight: _useCurrentLocation
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                  Switch(
+                    value: _useCurrentLocation,
+                    activeColor: Colors.deepOrangeAccent,
+                    onChanged: (value) {
+                      setState(() {
+                        _useCurrentLocation = value;
+                        if (value && _location == null) {
+                          _getCurrentLocation();
+                        }
+                      });
+                    },
+                  ),
+                ],
+              ),
+              if (_useCurrentLocation && _location == null)
+                ElevatedButton.icon(
+                  onPressed: _getCurrentLocation,
+                  icon: const Icon(Icons.my_location),
+                  label: const Text('Get Current Location'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepOrangeAccent,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: _saveDevice,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepOrangeAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'SAVE DEVICE',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ),
+        ),
+      ),
     );
   }
 }
