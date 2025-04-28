@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:rent_app/Device/add_device_screen.dart';
 import 'package:rent_app/Device/device_detail_screen.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:rent_app/map_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,6 +20,15 @@ class HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _devices = [];
   List<Map<String, dynamic>> _filteredDevices = [];
   bool _isLoading = true;
+
+  bool _filterByLocation = false;
+  double _distanceFilter = 5.0;
+  Position? _currentPosition;
+
+  Position? _filterCenter;
+  double _filterRadius = 5000;
+  bool _locationFilterEnabled = false;
+
 
   final List<String> _categories = [
     'All',
@@ -40,38 +51,31 @@ class HomeScreenState extends State<HomeScreen> {
     super.initState();
     _user = _auth.currentUser!;
     _loadDevices();
+    _getCurrentLocation();
+  }
+
+  Future<void> _getCurrentLocation() async {
+    try {
+      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      setState(() {
+        _currentPosition = position;
+        _filterCenter = position;
+      });
+    } catch (e) {
+      debugPrint('Error getting location: $e');
+    }
   }
 
   Future<void> _loadDevices() async {
     setState(() => _isLoading = true);
     try {
       _devices = await _fetchDevices();
-      _filterDevicesByCategory(_selectedCategory);
+      _applyFilters();
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
-  }
-
-  void _filterDevicesByCategory(String category) {
-    setState(() {
-      _selectedCategory = category;
-
-      if (category == 'All') {
-        _filteredDevices = List.from(_devices);
-      } else {
-        _filteredDevices = _devices.where((device) =>
-          device['category'] == category
-        ).toList();
-      }
-    });
-  }
-
-  Future<void> _logOut() async {
-    await _auth.signOut();
-    if (!mounted) return;
-    Navigator.pushReplacementNamed(context, '/login');
   }
 
   Future<List<Map<String, dynamic>>> _fetchDevices() async {
@@ -89,6 +93,47 @@ class HomeScreenState extends State<HomeScreen> {
       debugPrint("Error fetching devices: $e");
       return [];
     }
+  }
+
+  void _applyFilters() {
+    List<Map<String, dynamic>> devices = List.from(_devices);
+
+    // Category filter
+    if (_selectedCategory != 'All') {
+      devices = devices.where((device) => device['category'] == _selectedCategory).toList();
+    }
+
+    // Location filter
+    if (_filterByLocation && _currentPosition != null) {
+      devices = devices.where((device) {
+        if (device['location'] == null) return false;
+        GeoPoint geoPoint = device['location'];
+        double distanceInMeters = Geolocator.distanceBetween(
+          _currentPosition!.latitude,
+          _currentPosition!.longitude,
+          geoPoint.latitude,
+          geoPoint.longitude,
+        );
+        return distanceInMeters <= _distanceFilter * 1000;
+      }).toList();
+    }
+
+    setState(() {
+      _filteredDevices = devices;
+    });
+  }
+
+  void _filterDevicesByCategory(String category) {
+    setState(() {
+      _selectedCategory = category;
+    });
+    _applyFilters();
+  }
+
+  Future<void> _logOut() async {
+    await _auth.signOut();
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(context, '/login');
   }
 
   String _formatUsername(String email) {
@@ -109,25 +154,33 @@ class HomeScreenState extends State<HomeScreen> {
             fontSize: 20,
             fontWeight: FontWeight.bold,
             color: Colors.white
-          )
+          ),
         ),
         backgroundColor: Colors.black87,
         actions: [
           IconButton(
             icon: const Icon(Icons.map, color: Colors.white),
             onPressed: () {
-              Navigator.pushNamed(context, '/device-map');
-            },
-            tooltip: 'View devices on map',
-          ),
-          IconButton(
-            icon: const Icon(Icons.exit_to_app, color: Colors.white),
-            onPressed: _logOut,
-          ),
-        ],
+              Navigator.push(context, MaterialPageRoute(
+                builder: (context) => DeviceMapScreen(
+                  locationFilterEnabled: _locationFilterEnabled,
+                  filterCenter: _filterCenter, // fallback if null
+                  filterRadius: _filterRadius,
+                  ),
+                  ));
+                  },
+                  tooltip: 'View devices on map',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.exit_to_app, color: Colors.white),
+                    onPressed: _logOut,
+                    ),
+                    ],
+
       ),
       body: Column(
         children: [
+          // Category Filter Chips
           Container(
             height: 60,
             padding: const EdgeInsets.symmetric(vertical: 8),
@@ -163,6 +216,46 @@ class HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
+          // Location Filter Switch and Slider
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('Filter by Distance'),
+              Switch(
+                value: _filterByLocation,
+                onChanged: (value) {
+                  setState(() {
+                    _filterByLocation = value;
+                    _locationFilterEnabled = _filterByLocation;
+                  });
+                  _applyFilters();
+                },
+                activeColor: Colors.deepOrangeAccent,
+              ),
+            ],
+          ),
+          if (_filterByLocation)
+            Column(
+              children: [
+                Text('${_distanceFilter.toInt()} km'),
+                Slider(
+                  value: _distanceFilter,
+                  min: 5,
+                  max: 50,
+                  divisions: 9,
+                  label: '${_distanceFilter.toInt()} km',
+                  onChanged: (value) {
+                    setState(() {
+                      _distanceFilter = value;
+                      _filterRadius = _distanceFilter * 1000;
+                    });
+                    _applyFilters();
+                  },
+                ),
+              ],
+            ),
+
+          // Device List
           Expanded(
             child: RefreshIndicator(
               onRefresh: _loadDevices,
@@ -327,8 +420,7 @@ class HomeScreenState extends State<HomeScreen> {
                                 return Center(
                                   child: CircularProgressIndicator(
                                     value: loadingProgress.expectedTotalBytes != null
-                                        ? loadingProgress.cumulativeBytesLoaded /
-                                            loadingProgress.expectedTotalBytes!
+                                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
                                         : null,
                                     strokeWidth: 2,
                                   ),
@@ -357,7 +449,6 @@ class HomeScreenState extends State<HomeScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
-
                         if (device['category'] != null)
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -374,7 +465,6 @@ class HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                           ),
-
                         Text(
                           device['description'] ?? 'No description',
                           style: TextStyle(color: Colors.grey.shade600),
@@ -390,38 +480,23 @@ class HomeScreenState extends State<HomeScreen> {
                               color: Colors.deepOrangeAccent,
                             ),
                           ),
-
                         if (device['available'] != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
-                            child: Row(
-                              children: [
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    device['available'] == true ? 'Available' : 'Not Available',
-                                    style: const TextStyle(
-                                      color: Colors.deepOrangeAccent,
-                                      fontSize: 12,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              device['available'] == true ? 'Available' : 'Not Available',
+                              style: const TextStyle(
+                                color: Colors.deepOrangeAccent,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
-
-
                         if (device['location'] != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Row(
                               children: [
-                                const Icon(
-                                  Icons.location_on,
-                                  size: 14,
-                                  color: Colors.deepOrangeAccent,
-                                ),
+                                const Icon(Icons.location_on, size: 14, color: Colors.deepOrangeAccent),
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
@@ -439,10 +514,7 @@ class HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-                  const Icon(
-                    Icons.chevron_right,
-                    color: Colors.grey,
-                  ),
+                  const Icon(Icons.chevron_right, color: Colors.grey),
                 ],
               ),
             ),

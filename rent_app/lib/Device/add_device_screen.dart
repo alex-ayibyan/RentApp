@@ -6,6 +6,9 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:location/location.dart' as location_service;
 import 'package:geocoding/geocoding.dart';
+import 'package:latlong2/latlong.dart';
+
+import 'location_picker_screen.dart'; // <-- Make sure this import is correct
 
 class AddDeviceScreen extends StatefulWidget {
   const AddDeviceScreen({super.key});
@@ -27,25 +30,17 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
 
   File? _imageFile;
   bool _isLoading = false;
-  bool _useCurrentLocation = false;
-  bool _isAvailable = true;
   GeoPoint? _location;
   String? _address;
 
   final List<String> _categories = [
-    'Electronics',
-    'Tools',
-    'Furniture',
-    'Vehicles',
-    'Sports Equipment',
-    'Clothing',
-    'Books',
-    'Kitchen Appliances',
-    'Musical Instruments',
-    'Other'
+    'Electronics', 'Tools', 'Furniture', 'Vehicles', 'Sports Equipment',
+    'Clothing', 'Books', 'Kitchen Appliances', 'Musical Instruments', 'Other'
   ];
 
   String _selectedCategory = 'Electronics';
+
+  bool _addLocation = false; // <-- New: Whether user wants to add location
 
   @override
   void dispose() {
@@ -58,9 +53,7 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
-      setState(() {
-        _imageFile = File(image.path);
-      });
+      setState(() => _imageFile = File(image.path));
     }
   }
 
@@ -70,7 +63,6 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
     try {
       final String fileName = '${DateTime.now().millisecondsSinceEpoch}_${_auth.currentUser!.uid}';
       final Reference storageRef = _storage.ref().child('device_images/$fileName');
-
       await storageRef.putFile(_imageFile!);
       return await storageRef.getDownloadURL();
     } catch (e) {
@@ -81,11 +73,9 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
 
   Future<void> _getCurrentLocation() async {
     setState(() => _isLoading = true);
-
     try {
       final locationService = location_service.Location();
       bool serviceEnabled = await locationService.serviceEnabled();
-
       if (!serviceEnabled) {
         serviceEnabled = await locationService.requestService();
         if (!serviceEnabled) {
@@ -109,8 +99,8 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
       final GeoPoint geoPoint = GeoPoint(locationData.latitude!, locationData.longitude!);
 
       List<Placemark> placemarks = await placemarkFromCoordinates(
-          locationData.latitude!,
-          locationData.longitude!
+        locationData.latitude!,
+        locationData.longitude!,
       );
 
       String fullAddress = 'Unknown location';
@@ -122,7 +112,6 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
       setState(() {
         _location = geoPoint;
         _address = fullAddress;
-        _useCurrentLocation = true;
         _isLoading = false;
       });
 
@@ -134,15 +123,43 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
     }
   }
 
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message))
+  Future<void> _selectLocationManually() async {
+    LatLng? selectedLocation = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const LocationPickerScreen(),
+      ),
     );
+
+    if (selectedLocation != null) {
+      GeoPoint geoPoint = GeoPoint(selectedLocation.latitude, selectedLocation.longitude);
+
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        selectedLocation.latitude,
+        selectedLocation.longitude,
+      );
+
+      String fullAddress = 'Unknown location';
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks.first;
+        fullAddress = '${place.street}, ${place.locality}, ${place.country}';
+      }
+
+      setState(() {
+        _location = geoPoint;
+        _address = fullAddress;
+      });
+
+      _showSnackBar('Location selected: $_address');
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _saveDevice() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isLoading = true);
 
     try {
@@ -150,7 +167,7 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
 
       Map<String, dynamic> deviceData = {
         'name': _nameController.text.trim(),
-        'available': _isAvailable, // correct bool field
+        'available': true,
         'description': _descriptionController.text.trim(),
         'pricePerDay': double.parse(_priceController.text.trim()),
         'ownerId': _auth.currentUser!.uid,
@@ -160,7 +177,7 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
         'category': _selectedCategory,
       };
 
-      if (_useCurrentLocation && _location != null) {
+      if (_addLocation && _location != null) {
         deviceData['location'] = _location;
         deviceData['address'] = _address;
       }
@@ -180,10 +197,7 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-            'Add New Device',
-            style: TextStyle(color: Colors.white)
-        ),
+        title: const Text('Add New Device', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.black87,
       ),
       body: _isLoading
@@ -206,30 +220,20 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
                   ),
                   child: _imageFile != null
                       ? ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      _imageFile!,
-                      fit: BoxFit.cover,
-                    ),
-                  )
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.file(
+                            _imageFile!,
+                            fit: BoxFit.cover,
+                          ),
+                        )
                       : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.add_a_photo,
-                        size: 48,
-                        color: Colors.grey.shade600,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Add Device Photo',
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 16,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add_a_photo, size: 48, color: Colors.grey.shade600),
+                            const SizedBox(height: 8),
+                            Text('Add Device Photo', style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -239,59 +243,23 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
                   labelText: 'Device Name',
                   prefixIcon: Icon(Icons.devices),
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a device name';
-                  }
-                  return null;
-                },
+                validator: (value) => (value == null || value.trim().isEmpty) ? 'Please enter a device name' : null,
               ),
               const SizedBox(height: 16),
-
-              Row(
-                children: [
-                  const Icon(Icons.event_available, color: Colors.grey),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Text(
-                      'Available',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ),
-                  Switch(
-                    value: _isAvailable,
-                    activeColor: Colors.green,
-                    onChanged: (value) {
-                      setState(() {
-                        _isAvailable = value;
-                      });
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
               DropdownButtonFormField<String>(
                 value: _selectedCategory,
                 decoration: const InputDecoration(
                   labelText: 'Category',
                   prefixIcon: Icon(Icons.category),
                 ),
-                items: _categories.map((String category) {
-                  return DropdownMenuItem<String>(
-                    value: category,
-                    child: Text(category),
-                  );
-                }).toList(),
+                items: _categories.map((String category) => DropdownMenuItem<String>(
+                  value: category,
+                  child: Text(category),
+                )).toList(),
                 onChanged: (String? newValue) {
-                  if (newValue != null) {
-                    setState(() {
-                      _selectedCategory = newValue;
-                    });
-                  }
+                  if (newValue != null) setState(() => _selectedCategory = newValue);
                 },
               ),
-
               const SizedBox(height: 16),
               TextFormField(
                 controller: _descriptionController,
@@ -300,12 +268,7 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
                   prefixIcon: Icon(Icons.description),
                 ),
                 maxLines: 3,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a description';
-                  }
-                  return null;
-                },
+                validator: (value) => (value == null || value.trim().isEmpty) ? 'Please enter a description' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -316,14 +279,9 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
                 ),
                 keyboardType: TextInputType.number,
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a price';
-                  }
+                  if (value == null || value.trim().isEmpty) return 'Please enter a price';
                   try {
-                    double price = double.parse(value);
-                    if (price <= 0) {
-                      return 'Price must be greater than zero';
-                    }
+                    if (double.parse(value) <= 0) return 'Price must be greater than zero';
                   } catch (e) {
                     return 'Please enter a valid number';
                   }
@@ -332,49 +290,47 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
               ),
               const SizedBox(height: 24),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _useCurrentLocation
-                          ? 'Location: ${_address ?? 'Selected'}'
-                          : 'Add device location?',
-                      style: TextStyle(
-                        color: _useCurrentLocation
-                            ? Colors.deepOrangeAccent
-                            : Colors.grey.shade600,
-                        fontWeight: _useCurrentLocation
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+              // 🔥 Add location toggle switch
+              SwitchListTile(
+                title: const Text('Add Location?'),
+                value: _addLocation,
+                onChanged: (bool value) {
+                  setState(() => _addLocation = value);
+                },
+              ),
+
+              if (_addLocation) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _getCurrentLocation,
+                        icon: const Icon(Icons.my_location),
+                        label: const Text('Use Current Location'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepOrangeAccent,
+                          foregroundColor: Colors.white,
+                        ),
                       ),
                     ),
-                  ),
-                  Switch(
-                    value: _useCurrentLocation,
-                    activeColor: Colors.deepOrangeAccent,
-                    onChanged: (value) {
-                      setState(() {
-                        _useCurrentLocation = value;
-                        if (value && _location == null) {
-                          _getCurrentLocation();
-                        }
-                      });
-                    },
-                  ),
-                ],
-              ),
-              if (_useCurrentLocation && _location == null)
-                ElevatedButton.icon(
-                  onPressed: _getCurrentLocation,
-                  icon: const Icon(Icons.my_location),
-                  label: const Text('Get Current Location'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepOrangeAccent,
-                    foregroundColor: Colors.white,
-                  ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _selectLocationManually,
+                        icon: const Icon(Icons.map),
+                        label: const Text('Select on Map'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepOrangeAccent,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 16),
+              ],
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _saveDevice,
                 style: ElevatedButton.styleFrom(
@@ -387,10 +343,7 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
                 ),
                 child: const Text(
                   'SAVE DEVICE',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
