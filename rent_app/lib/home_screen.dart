@@ -5,6 +5,7 @@ import 'package:rent_app/Device/add_device_screen.dart';
 import 'package:rent_app/Device/device_detail_screen.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:rent_app/map_screen.dart';
+import 'package:rent_app/reservation/reservations_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,7 +29,6 @@ class HomeScreenState extends State<HomeScreen> {
   Position? _filterCenter;
   double _filterRadius = 5000;
   bool _locationFilterEnabled = false;
-
 
   final List<String> _categories = [
     'All',
@@ -98,12 +98,10 @@ class HomeScreenState extends State<HomeScreen> {
   void _applyFilters() {
     List<Map<String, dynamic>> devices = List.from(_devices);
 
-    // Category filter
     if (_selectedCategory != 'All') {
       devices = devices.where((device) => device['category'] == _selectedCategory).toList();
     }
 
-    // Location filter
     if (_filterByLocation && _currentPosition != null) {
       devices = devices.where((device) {
         if (device['location'] == null) return false;
@@ -159,24 +157,33 @@ class HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.black87,
         actions: [
           IconButton(
+            icon: const Icon(Icons.calendar_today, color: Colors.white),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MyReservationsScreen()),
+              );
+            },
+            tooltip: 'Mijn Reservaties',
+          ),
+          IconButton(
             icon: const Icon(Icons.map, color: Colors.white),
             onPressed: () {
               Navigator.push(context, MaterialPageRoute(
                 builder: (context) => DeviceMapScreen(
                   locationFilterEnabled: _locationFilterEnabled,
-                  filterCenter: _filterCenter, // fallback if null
+                  filterCenter: _filterCenter,
                   filterRadius: _filterRadius,
-                  ),
-                  ));
-                  },
-                  tooltip: 'View devices on map',
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.exit_to_app, color: Colors.white),
-                    onPressed: _logOut,
-                    ),
-                    ],
-
+                ),
+              ));
+            },
+            tooltip: 'View devices on map',
+          ),
+          IconButton(
+            icon: const Icon(Icons.exit_to_app, color: Colors.white),
+            onPressed: _logOut,
+          ),
+        ],
       ),
       body: Column(
         children: [

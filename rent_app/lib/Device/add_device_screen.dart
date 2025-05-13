@@ -30,6 +30,7 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
 
   File? _imageFile;
   bool _isLoading = false;
+  bool _isAvailable = true;
   GeoPoint? _location;
   String? _address;
 
@@ -40,7 +41,7 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
 
   String _selectedCategory = 'Electronics';
 
-  bool _addLocation = false; // <-- New: Whether user wants to add location
+  bool _addLocation = false;
 
   @override
   void dispose() {
@@ -167,7 +168,7 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
 
       Map<String, dynamic> deviceData = {
         'name': _nameController.text.trim(),
-        'available': true,
+        'available': _isAvailable,
         'description': _descriptionController.text.trim(),
         'pricePerDay': double.parse(_priceController.text.trim()),
         'ownerId': _auth.currentUser!.uid,
@@ -246,6 +247,29 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
                 validator: (value) => (value == null || value.trim().isEmpty) ? 'Please enter a device name' : null,
               ),
               const SizedBox(height: 16),
+
+               Row(
+                 children: [
+                   const Icon(Icons.event_available, color: Colors.grey),
+                   const SizedBox(width: 16),
+                   Expanded(
+                     child: Text(
+                       'Available',
+                       style: TextStyle(fontSize: 16),
+                     ),
+                   ),
+                   Switch(
+                     value: _isAvailable,
+                     activeColor: Colors.green,
+                     onChanged: (value) {
+                       setState(() {
+                         _isAvailable = value;
+                       });
+                     },
+                   ),
+                 ],
+               ),
+               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: _selectedCategory,
                 decoration: const InputDecoration(
