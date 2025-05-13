@@ -24,7 +24,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Verhuur App',
+      title: 'Toolify',
       theme: ThemeData(
         primaryColor: Colors.black87,
         scaffoldBackgroundColor: Colors.white,

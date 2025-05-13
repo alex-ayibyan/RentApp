@@ -41,7 +41,7 @@ class HomeScreenState extends State<HomeScreen> {
     'Books',
     'Kitchen Appliances',
     'Musical Instruments',
-    'Other'
+    'Other',
   ];
 
   String _selectedCategory = 'All';
@@ -56,7 +56,9 @@ class HomeScreenState extends State<HomeScreen> {
 
   Future<void> _getCurrentLocation() async {
     try {
-      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
       setState(() {
         _currentPosition = position;
         _filterCenter = position;
@@ -99,21 +101,25 @@ class HomeScreenState extends State<HomeScreen> {
     List<Map<String, dynamic>> devices = List.from(_devices);
 
     if (_selectedCategory != 'All') {
-      devices = devices.where((device) => device['category'] == _selectedCategory).toList();
+      devices =
+          devices
+              .where((device) => device['category'] == _selectedCategory)
+              .toList();
     }
 
     if (_filterByLocation && _currentPosition != null) {
-      devices = devices.where((device) {
-        if (device['location'] == null) return false;
-        GeoPoint geoPoint = device['location'];
-        double distanceInMeters = Geolocator.distanceBetween(
-          _currentPosition!.latitude,
-          _currentPosition!.longitude,
-          geoPoint.latitude,
-          geoPoint.longitude,
-        );
-        return distanceInMeters <= _distanceFilter * 1000;
-      }).toList();
+      devices =
+          devices.where((device) {
+            if (device['location'] == null) return false;
+            GeoPoint geoPoint = device['location'];
+            double distanceInMeters = Geolocator.distanceBetween(
+              _currentPosition!.latitude,
+              _currentPosition!.longitude,
+              geoPoint.latitude,
+              geoPoint.longitude,
+            );
+            return distanceInMeters <= _distanceFilter * 1000;
+          }).toList();
     }
 
     setState(() {
@@ -135,10 +141,13 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   String _formatUsername(String email) {
-    return email.split('@')[0].split('.')
-        .map((name) => name.isNotEmpty
-            ? name[0].toUpperCase() + name.substring(1)
-            : '')
+    return email
+        .split('@')[0]
+        .split('.')
+        .map(
+          (name) =>
+              name.isNotEmpty ? name[0].toUpperCase() + name.substring(1) : '',
+        )
         .join(' ');
   }
 
@@ -151,7 +160,7 @@ class HomeScreenState extends State<HomeScreen> {
           style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: Colors.white
+            color: Colors.white,
           ),
         ),
         backgroundColor: Colors.black87,
@@ -161,7 +170,9 @@ class HomeScreenState extends State<HomeScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const MyReservationsScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const MyReservationsScreen(),
+                ),
               );
             },
             tooltip: 'Mijn Reservaties',
@@ -169,13 +180,17 @@ class HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: const Icon(Icons.map, color: Colors.white),
             onPressed: () {
-              Navigator.push(context, MaterialPageRoute(
-                builder: (context) => DeviceMapScreen(
-                  locationFilterEnabled: _locationFilterEnabled,
-                  filterCenter: _filterCenter,
-                  filterRadius: _filterRadius,
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (context) => DeviceMapScreen(
+                        locationFilterEnabled: _locationFilterEnabled,
+                        filterCenter: _filterCenter,
+                        filterRadius: _filterRadius,
+                      ),
                 ),
-              ));
+              );
             },
             tooltip: 'View devices on map',
           ),
@@ -216,7 +231,10 @@ class HomeScreenState extends State<HomeScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                     backgroundColor: Colors.grey.shade200,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                   ),
                 );
               },
@@ -266,13 +284,14 @@ class HomeScreenState extends State<HomeScreen> {
           Expanded(
             child: RefreshIndicator(
               onRefresh: _loadDevices,
-              child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _devices.isEmpty
-                  ? _buildEmptyState()
-                  : _filteredDevices.isEmpty
-                    ? _buildNoCategoryItemsState()
-                    : _buildDeviceList(),
+              child:
+                  _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _devices.isEmpty
+                      ? _buildEmptyState()
+                      : _filteredDevices.isEmpty
+                      ? _buildNoCategoryItemsState()
+                      : _buildDeviceList(),
             ),
           ),
         ],
@@ -300,18 +319,11 @@ class HomeScreenState extends State<HomeScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.devices_other,
-            size: 80,
-            color: Colors.grey,
-          ),
+          const Icon(Icons.devices_other, size: 80, color: Colors.grey),
           const SizedBox(height: 16),
           const Text(
             'No devices available',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           const Text(
@@ -338,18 +350,11 @@ class HomeScreenState extends State<HomeScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.category,
-            size: 80,
-            color: Colors.grey,
-          ),
+          const Icon(Icons.category, size: 80, color: Colors.grey),
           const SizedBox(height: 16),
           Text(
             'No $_selectedCategory items found',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           const Text(
@@ -389,7 +394,8 @@ class HomeScreenState extends State<HomeScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => DeviceDetailScreen(deviceId: device['id']),
+                  builder:
+                      (context) => DeviceDetailScreen(deviceId: device['id']),
                 ),
               ).then((_) => _loadDevices());
             },
@@ -406,40 +412,51 @@ class HomeScreenState extends State<HomeScreen> {
                       color: Colors.grey.shade200,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: device['image'] != null && device['image'].toString().isNotEmpty
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              device['image'],
-                              fit: BoxFit.cover,
-                              width: 60,
-                              height: 60,
-                              errorBuilder: (context, error, stackTrace) {
-                                debugPrint('Error loading image: $error');
-                                return Icon(
-                                  Icons.devices,
-                                  color: Colors.deepOrangeAccent.shade200,
-                                  size: 30,
-                                );
-                              },
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Center(
-                                  child: CircularProgressIndicator(
-                                    value: loadingProgress.expectedTotalBytes != null
-                                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                        : null,
-                                    strokeWidth: 2,
-                                  ),
-                                );
-                              },
+                    child:
+                        device['image'] != null &&
+                                device['image'].toString().isNotEmpty
+                            ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                device['image'],
+                                fit: BoxFit.cover,
+                                width: 60,
+                                height: 60,
+                                errorBuilder: (context, error, stackTrace) {
+                                  debugPrint('Error loading image: $error');
+                                  return Icon(
+                                    Icons.devices,
+                                    color: Colors.deepOrangeAccent.shade200,
+                                    size: 30,
+                                  );
+                                },
+                                loadingBuilder: (
+                                  context,
+                                  child,
+                                  loadingProgress,
+                                ) {
+                                  if (loadingProgress == null) return child;
+                                  return Center(
+                                    child: CircularProgressIndicator(
+                                      value:
+                                          loadingProgress.expectedTotalBytes !=
+                                                  null
+                                              ? loadingProgress
+                                                      .cumulativeBytesLoaded /
+                                                  loadingProgress
+                                                      .expectedTotalBytes!
+                                              : null,
+                                      strokeWidth: 2,
+                                    ),
+                                  );
+                                },
+                              ),
+                            )
+                            : Icon(
+                              Icons.devices,
+                              color: Colors.deepOrangeAccent.shade200,
+                              size: 30,
                             ),
-                          )
-                        : Icon(
-                            Icons.devices,
-                            color: Colors.deepOrangeAccent.shade200,
-                            size: 30,
-                          ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -458,7 +475,10 @@ class HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 4),
                         if (device['category'] != null)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
                             margin: const EdgeInsets.only(bottom: 4),
                             decoration: BoxDecoration(
                               color: Colors.grey.shade200,
@@ -491,7 +511,9 @@ class HomeScreenState extends State<HomeScreen> {
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
-                              device['available'] == true ? 'Available' : 'Not Available',
+                              device['available'] == true
+                                  ? 'Available'
+                                  : 'Not Available',
                               style: const TextStyle(
                                 color: Colors.deepOrangeAccent,
                                 fontSize: 12,
@@ -503,7 +525,11 @@ class HomeScreenState extends State<HomeScreen> {
                             padding: const EdgeInsets.only(top: 4),
                             child: Row(
                               children: [
-                                const Icon(Icons.location_on, size: 14, color: Colors.deepOrangeAccent),
+                                const Icon(
+                                  Icons.location_on,
+                                  size: 14,
+                                  color: Colors.deepOrangeAccent,
+                                ),
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(

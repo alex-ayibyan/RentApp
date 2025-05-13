@@ -27,16 +27,16 @@ class LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login geslaagd!')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Login geslaagd!')));
 
       Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fout bij inloggen: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Fout bij inloggen: $e')));
       }
     } finally {
       if (mounted) {
@@ -75,10 +75,7 @@ class LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Inloggen',
-          style: TextStyle(color: Colors.white),
-        ),
+        title: Text('Inloggen', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.black87,
       ),
       body: Padding(
@@ -88,7 +85,7 @@ class LoginScreenState extends State<LoginScreen> {
             children: [
               SizedBox(height: 40),
               Text(
-                'Verhuur App',
+                'Toolify',
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
@@ -103,35 +100,38 @@ class LoginScreenState extends State<LoginScreen> {
               SizedBox(height: 16),
               TextField(
                 controller: passwordController,
-                decoration:
-                buildInputDecoration('Wachtwoord', 'Voer je wachtwoord in'),
+                decoration: buildInputDecoration(
+                  'Wachtwoord',
+                  'Voer je wachtwoord in',
+                ),
                 obscureText: true,
               ),
               SizedBox(height: 24),
               isLoading
                   ? CircularProgressIndicator(
-                valueColor:
-                AlwaysStoppedAnimation<Color>(Colors.black87),
-              )
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.black87),
+                  )
                   : ElevatedButton(
-                onPressed: login,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black87,
-                  padding:
-                  EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    onPressed: login,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black87,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      'Inloggen',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
-                ),
-                child: Text(
-                  'Inloggen',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
               SizedBox(height: 16),
               TextButton(
                 onPressed: () {
@@ -139,10 +139,7 @@ class LoginScreenState extends State<LoginScreen> {
                 },
                 child: Text(
                   'Nog geen account? Registreer hier',
-                  style: TextStyle(
-                    color: Colors.black87,
-                    fontSize: 16,
-                  ),
+                  style: TextStyle(color: Colors.black87, fontSize: 16),
                 ),
               ),
             ],

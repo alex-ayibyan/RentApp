@@ -20,7 +20,7 @@ class _MyReservationsScreenState extends State<MyReservationsScreen> {
     final user = _auth.currentUser!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mijn Reservaties'),
+        title: const Text('Reservations'),
         backgroundColor: Colors.black87,
       ),
       body: Column(
@@ -100,9 +100,9 @@ class _MyReservationsScreenState extends State<MyReservationsScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildToggleButton('Mijn reservaties', 'received'),
+          _buildToggleButton('My reservations', 'received'),
           const SizedBox(width: 8),
-          _buildToggleButton('Mijn reserveringen', 'made'),
+          _buildToggleButton('My bookings', 'made'),
         ],
       ),
     );
