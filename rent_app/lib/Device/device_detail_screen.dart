@@ -129,27 +129,27 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _contactOwner() async {
-    if (_deviceData == null || _deviceData!['ownerEmail'] == null) return;
+  // Future<void> _contactOwner() async {
+  //   if (_deviceData == null || _deviceData!['ownerEmail'] == null) return;
 
-    final Uri emailUri = Uri(
-      scheme: 'mailto',
-      path: _deviceData!['ownerEmail'],
-      query:
-          'subject=Inquiry about ${Uri.encodeComponent(_deviceData!['name'] ?? 'your device')}&body=${Uri.encodeComponent('Hello,\n\nI am interested in renting your "${_deviceData!['name']}" device. Could you please provide more information?\n\nThank you!')}',
-    );
+  //   final Uri emailUri = Uri(
+  //     scheme: 'mailto',
+  //     path: _deviceData!['ownerEmail'],
+  //     query:
+  //         'subject=Inquiry about ${Uri.encodeComponent(_deviceData!['name'] ?? 'your device')}&body=${Uri.encodeComponent('Hello,\n\nI am interested in renting your "${_deviceData!['name']}" device. Could you please provide more information?\n\nThank you!')}',
+  //   );
 
-    try {
-      if (await canLaunchUrlString(emailUri.toString())) {
-        await launchUrlString(emailUri.toString());
-      } else {
-        _showSnackBar('Could not launch email app');
-      }
-    } catch (e) {
-      debugPrint('Error launching email: $e');
-      _showSnackBar('Failed to open email app');
-    }
-  }
+  //   try {
+  //     if (await canLaunchUrlString(emailUri.toString())) {
+  //       await launchUrlString(emailUri.toString());
+  //     } else {
+  //       _showSnackBar('Could not launch email app');
+  //     }
+  //   } catch (e) {
+  //     debugPrint('Error launching email: $e');
+  //     _showSnackBar('Failed to open email app');
+  //   }
+  // }
 
   String _formatDate(Timestamp? timestamp) {
     if (timestamp == null) return 'N/A';
