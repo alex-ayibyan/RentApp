@@ -208,7 +208,7 @@ class DeviceMapScreenState extends State<DeviceMapScreen> {
               },
               child: Column(
                 children: [
-                  const Icon(Icons.location_on, color: Colors.deepOrangeAccent, size: 40),
+                  const Icon(Icons.location_on, color: Colors.green, size: 40),
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(

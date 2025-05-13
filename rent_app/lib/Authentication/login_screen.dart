@@ -52,14 +52,14 @@ class LoginScreenState extends State<LoginScreen> {
       labelText: label,
       hintText: hint,
       labelStyle: TextStyle(color: Colors.black54),
-      floatingLabelStyle: TextStyle(color: Colors.black87),
+      floatingLabelStyle: TextStyle(color: Colors.green),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.black87),
+        borderSide: BorderSide(color: Colors.green),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.black87, width: 2),
+        borderSide: BorderSide(color: Colors.green, width: 2),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -75,8 +75,11 @@ class LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Inloggen', style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.black87,
+        title: Text(
+          'Inloggen',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.black,
       ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -85,11 +88,11 @@ class LoginScreenState extends State<LoginScreen> {
             children: [
               SizedBox(height: 40),
               Text(
-                'Toolify',
+                'Huur van uw buur',
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: Colors.green,
                 ),
               ),
               SizedBox(height: 20),
@@ -109,29 +112,28 @@ class LoginScreenState extends State<LoginScreen> {
               SizedBox(height: 24),
               isLoading
                   ? CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.black87),
-                  )
+                valueColor:
+                AlwaysStoppedAnimation<Color>(Colors.green),
+              )
                   : ElevatedButton(
-                    onPressed: login,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black87,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 16,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(
-                      'Inloggen',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
+                onPressed: login,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  padding:
+                  EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
+                ),
+                child: Text(
+                  'Inloggen',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
               SizedBox(height: 16),
               TextButton(
                 onPressed: () {
@@ -139,7 +141,10 @@ class LoginScreenState extends State<LoginScreen> {
                 },
                 child: Text(
                   'Nog geen account? Registreer hier',
-                  style: TextStyle(color: Colors.black87, fontSize: 16),
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ],

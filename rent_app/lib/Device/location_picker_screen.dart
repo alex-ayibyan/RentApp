@@ -7,10 +7,10 @@ class LocationPickerScreen extends StatefulWidget {
   const LocationPickerScreen({super.key});
 
   @override
-  _LocationPickerScreenState createState() => _LocationPickerScreenState();
+  LocationPickerScreenState createState() => LocationPickerScreenState();
 }
 
-class _LocationPickerScreenState extends State<LocationPickerScreen> {
+class LocationPickerScreenState extends State<LocationPickerScreen> {
   LatLng? _center;
   LatLng? _pickedLocation;
 

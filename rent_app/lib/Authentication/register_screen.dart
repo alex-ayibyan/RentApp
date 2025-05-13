@@ -68,7 +68,7 @@ class RegisterScreenState extends State<RegisterScreen> {
           'Registreren',
           style: TextStyle(color: Colors.white),
         ),
-        backgroundColor: Colors.black87,
+        backgroundColor: Colors.black,
         elevation: 0,
       ),
       body: Padding(
@@ -82,7 +82,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: Colors.green,
                 ),
               ),
               SizedBox(height: 40),
@@ -117,7 +117,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                   : ElevatedButton(
                 onPressed: register,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black87,
+                  backgroundColor: Colors.green,
                   padding: EdgeInsets.symmetric(vertical: 14, horizontal: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -139,7 +139,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                 },
                 child: Text(
                   'Al een account? Log in hier',
-                  style: TextStyle(color: Colors.black87),
+                  style: TextStyle(color: Colors.green),
                 ),
               ),
             ],

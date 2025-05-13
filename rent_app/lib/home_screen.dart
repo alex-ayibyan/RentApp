@@ -224,7 +224,7 @@ class HomeScreenState extends State<HomeScreen> {
                         _filterDevicesByCategory(category);
                       }
                     },
-                    selectedColor: Colors.deepOrangeAccent,
+                    selectedColor: Colors.green,
                     checkmarkColor: Colors.white,
                     labelStyle: TextStyle(
                       color: isSelected ? Colors.white : Colors.black87,
@@ -255,7 +255,7 @@ class HomeScreenState extends State<HomeScreen> {
                   });
                   _applyFilters();
                 },
-                activeColor: Colors.deepOrangeAccent,
+                activeColor: Colors.green,
               ),
             ],
           ),
@@ -307,7 +307,7 @@ class HomeScreenState extends State<HomeScreen> {
             _loadDevices();
           }
         },
-        backgroundColor: Colors.deepOrangeAccent,
+        backgroundColor: Colors.green,
         tooltip: 'Add device',
         child: const Icon(Icons.add),
       ),
@@ -336,7 +336,7 @@ class HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.refresh),
             label: const Text('Refresh'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.deepOrangeAccent,
+              backgroundColor: Colors.green,
               foregroundColor: Colors.white,
             ),
           ),
@@ -367,7 +367,7 @@ class HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.all_inclusive),
             label: const Text('Show All Devices'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.deepOrangeAccent,
+              backgroundColor: Colors.green,
               foregroundColor: Colors.white,
             ),
           ),
@@ -386,7 +386,7 @@ class HomeScreenState extends State<HomeScreen> {
           margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Colors.black12, width: 0.5),
+            side: const BorderSide(color: Colors.green, width: 0.5),
           ),
           elevation: 3,
           child: InkWell(
@@ -412,51 +412,40 @@ class HomeScreenState extends State<HomeScreen> {
                       color: Colors.grey.shade200,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child:
-                        device['image'] != null &&
-                                device['image'].toString().isNotEmpty
-                            ? ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                device['image'],
-                                fit: BoxFit.cover,
-                                width: 60,
-                                height: 60,
-                                errorBuilder: (context, error, stackTrace) {
-                                  debugPrint('Error loading image: $error');
-                                  return Icon(
-                                    Icons.devices,
-                                    color: Colors.deepOrangeAccent.shade200,
-                                    size: 30,
-                                  );
-                                },
-                                loadingBuilder: (
-                                  context,
-                                  child,
-                                  loadingProgress,
-                                ) {
-                                  if (loadingProgress == null) return child;
-                                  return Center(
-                                    child: CircularProgressIndicator(
-                                      value:
-                                          loadingProgress.expectedTotalBytes !=
-                                                  null
-                                              ? loadingProgress
-                                                      .cumulativeBytesLoaded /
-                                                  loadingProgress
-                                                      .expectedTotalBytes!
-                                              : null,
-                                      strokeWidth: 2,
-                                    ),
-                                  );
-                                },
-                              ),
-                            )
-                            : Icon(
-                              Icons.devices,
-                              color: Colors.deepOrangeAccent.shade200,
-                              size: 30,
+                    child: device['image'] != null && device['image'].toString().isNotEmpty
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              device['image'],
+                              fit: BoxFit.cover,
+                              width: 60,
+                              height: 60,
+                              errorBuilder: (context, error, stackTrace) {
+                                debugPrint('Error loading image: $error');
+                                return Icon(
+                                  Icons.devices,
+                                  color: Colors.green.shade200,
+                                  size: 30,
+                                );
+                              },
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Center(
+                                  child: CircularProgressIndicator(
+                                    value: loadingProgress.expectedTotalBytes != null
+                                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                        : null,
+                                    strokeWidth: 2,
+                                  ),
+                                );
+                              },
                             ),
+                          )
+                        : Icon(
+                            Icons.devices,
+                            color: Colors.green.shade200,
+                            size: 30,
+                          ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -504,7 +493,7 @@ class HomeScreenState extends State<HomeScreen> {
                             '€${device['pricePerDay'].toStringAsFixed(2)}/day',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: Colors.deepOrangeAccent,
+                              color: Colors.green,
                             ),
                           ),
                         if (device['available'] != null)
@@ -515,7 +504,7 @@ class HomeScreenState extends State<HomeScreen> {
                                   ? 'Available'
                                   : 'Not Available',
                               style: const TextStyle(
-                                color: Colors.deepOrangeAccent,
+                                color: Colors.green,
                                 fontSize: 12,
                               ),
                             ),
@@ -525,17 +514,13 @@ class HomeScreenState extends State<HomeScreen> {
                             padding: const EdgeInsets.only(top: 4),
                             child: Row(
                               children: [
-                                const Icon(
-                                  Icons.location_on,
-                                  size: 14,
-                                  color: Colors.deepOrangeAccent,
-                                ),
+                                const Icon(Icons.location_on, size: 14, color: Colors.green),
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
                                     device['address'] ?? 'Location available',
                                     style: const TextStyle(
-                                      color: Colors.deepOrangeAccent,
+                                      color: Colors.green,
                                       fontSize: 12,
                                     ),
                                     overflow: TextOverflow.ellipsis,

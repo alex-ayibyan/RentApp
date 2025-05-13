@@ -332,7 +332,7 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
                         icon: const Icon(Icons.my_location),
                         label: const Text('Use Current Location'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepOrangeAccent,
+                          backgroundColor: Colors.green,
                           foregroundColor: Colors.white,
                         ),
                       ),
@@ -344,7 +344,7 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
                         icon: const Icon(Icons.map),
                         label: const Text('Select on Map'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepOrangeAccent,
+                          backgroundColor: Colors.green,
                           foregroundColor: Colors.white,
                         ),
                       ),
@@ -358,7 +358,7 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
               ElevatedButton(
                 onPressed: _saveDevice,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepOrangeAccent,
+                  backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(

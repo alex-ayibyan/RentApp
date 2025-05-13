@@ -162,7 +162,7 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
   }
 
   Color _getCategoryColor(String? category) {
-    if (category == null) return Colors.deepOrangeAccent;
+    if (category == null) return Colors.green;
 
     final Map<String, Color> categoryColors = {
       'Electronics': Colors.blue,
@@ -176,7 +176,7 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
       'Musical Instruments': Colors.deepPurple,
     };
 
-    return categoryColors[category] ?? Colors.deepOrangeAccent;
+    return categoryColors[category] ?? Colors.green;
   }
 
   double? _getLatitude(dynamic location) {
@@ -259,18 +259,33 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
     return reservedDates;
   }
 
-  Future<void> _makeReservation(DateTimeRange range) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
+Future<void> _makeReservation(DateTimeRange range) async {
+  final user = _auth.currentUser;
+  if (user == null) return;
 
-    await _firestore.collection('reservations').add({
-      'deviceId': widget.deviceId,
-      'userId': user.uid,
-      'startDate': Timestamp.fromDate(range.start),
-      'endDate': Timestamp.fromDate(range.end),
-      'createdAt': Timestamp.now(),
-    });
-  }
+  // Get the device owner ID and other necessary data
+  final deviceOwnerId = _deviceData!['ownerId'];
+  final deviceName = _deviceData!['name'];
+  final pricePerDay = _deviceData!['pricePerDay'];
+  
+  // Calculate total price
+  final days = range.end.difference(range.start).inDays + 1;
+  final totalPrice = pricePerDay * days;
+
+  await _firestore.collection('reservations').add({
+    'deviceId': widget.deviceId,
+    'deviceName': deviceName, // Store device name for easy display
+    'userId': user.uid,      // Person making the reservation
+    'renterId': user.uid,    // Same as userId (the renter)
+    'ownerId': deviceOwnerId, // The device owner
+    'startDate': Timestamp.fromDate(range.start),
+    'endDate': Timestamp.fromDate(range.end),
+    'totalPrice': totalPrice,
+    'pricePerDay': pricePerDay,
+    'status': 'pending', // Add status field
+    'createdAt': Timestamp.now(),
+  });
+}
 
   @override
   Widget build(BuildContext context) {
@@ -454,7 +469,7 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
                                     vertical: 6,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.deepOrangeAccent,
+                                    color: Colors.green,
                                     borderRadius: BorderRadius.circular(16),
                                   ),
                                   child: Text(
@@ -743,7 +758,7 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
                       backgroundColor:
                           _deviceData!['available'] == true
                               ? _getCategoryColor(category)
-                                      : Colors.deepOrangeAccent,
+                                      : Colors.green,
                               foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       textStyle: const TextStyle(
