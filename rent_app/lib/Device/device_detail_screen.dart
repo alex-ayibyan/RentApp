@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher_string.dart';
+import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:rent_app/Device/device_edit_screen.dart';
@@ -129,27 +129,100 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  // Future<void> _contactOwner() async {
-  //   if (_deviceData == null || _deviceData!['ownerEmail'] == null) return;
+  void _showCustomCalendarDialog() async {
+    final List<DateTime> bookedDates = await _getReservedDates();
 
-  //   final Uri emailUri = Uri(
-  //     scheme: 'mailto',
-  //     path: _deviceData!['ownerEmail'],
-  //     query:
-  //         'subject=Inquiry about ${Uri.encodeComponent(_deviceData!['name'] ?? 'your device')}&body=${Uri.encodeComponent('Hello,\n\nI am interested in renting your "${_deviceData!['name']}" device. Could you please provide more information?\n\nThank you!')}',
-  //   );
+    showDialog(
+      context: context,
+      builder: (context) {
+        DateTime? startDate;
+        DateTime? endDate;
+        DateTime focusedDay = DateTime.now();
 
-  //   try {
-  //     if (await canLaunchUrlString(emailUri.toString())) {
-  //       await launchUrlString(emailUri.toString());
-  //     } else {
-  //       _showSnackBar('Could not launch email app');
-  //     }
-  //   } catch (e) {
-  //     debugPrint('Error launching email: $e');
-  //     _showSnackBar('Failed to open email app');
-  //   }
-  // }
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Select reservation dates'),
+              content: SizedBox(
+                height: 400,
+                width: 350,
+                child: TableCalendar(
+                  firstDay: DateTime.now(),
+                  lastDay: DateTime.now().add(const Duration(days: 730)),
+                  focusedDay: focusedDay,
+                  calendarFormat: CalendarFormat.month,
+                  rangeSelectionMode: RangeSelectionMode.toggledOn,
+                  rangeStartDay: startDate,
+                  rangeEndDay: endDate,
+                  onRangeSelected: (start, end, newFocusedDay) {
+                    setState(() {
+                      startDate = start;
+                      endDate = end;
+                      focusedDay = newFocusedDay;
+                    });
+                  },
+                  selectedDayPredicate: (day) {
+                    return startDate != null &&
+                        endDate != null &&
+                        day.isAfter(
+                          startDate!.subtract(const Duration(days: 1)),
+                        ) &&
+                        day.isBefore(endDate!.add(const Duration(days: 1)));
+                  },
+                  calendarBuilders: CalendarBuilders(
+                    defaultBuilder: (context, day, focusedDay) {
+                      bool isBooked = bookedDates.contains(
+                        DateTime(day.year, day.month, day.day),
+                      );
+                      return Center(
+                        child: Text(
+                          '${day.day}',
+                          style: TextStyle(
+                            color: isBooked ? Colors.red : null,
+                            fontWeight:
+                                isBooked ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    if (startDate == null || endDate == null) {
+                      _showSnackBar("Please select a date range.");
+                      return;
+                    }
+
+                    final overlap = bookedDates.any(
+                      (d) => !d.isBefore(startDate!) && !d.isAfter(endDate!),
+                    );
+                    if (overlap) {
+                      _showSnackBar("Selected range contains booked dates.");
+                      return;
+                    }
+
+                    await _makeReservation(
+                      DateTimeRange(start: startDate!, end: endDate!),
+                    );
+                    Navigator.pop(context);
+                    _showSnackBar("Reservation successful.");
+                  },
+                  child: const Text('Reserve'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   String _formatDate(Timestamp? timestamp) {
     if (timestamp == null) return 'N/A';
@@ -199,40 +272,8 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
     return null;
   }
 
-  void _showReservationDialog() async {
-    final List<DateTime> bookedDates = await _getReservedDates();
-
-    DateTimeRange? selectedRange = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      initialDateRange: null,
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.light().copyWith(
-            colorScheme: ColorScheme.light(
-              primary: _getCategoryColor(_deviceData?['category']),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (selectedRange != null) {
-      final bool hasConflict = bookedDates.any(
-        (d) =>
-            !d.isBefore(selectedRange.start) && !d.isAfter(selectedRange.end),
-      );
-
-      if (hasConflict) {
-        _showSnackBar('Selected dates overlap with existing reservations.');
-        return;
-      }
-
-      await _makeReservation(selectedRange);
-      _showSnackBar('Device reserved successfully!');
-    }
+  void _showReservationDialog() {
+    _showCustomCalendarDialog();
   }
 
   Future<List<DateTime>> _getReservedDates() async {
@@ -240,6 +281,7 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
         await _firestore
             .collection('reservations')
             .where('deviceId', isEqualTo: widget.deviceId)
+            .where('status', whereIn: ['approved', 'pending'])
             .get();
 
     List<DateTime> reservedDates = [];
@@ -259,33 +301,33 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
     return reservedDates;
   }
 
-Future<void> _makeReservation(DateTimeRange range) async {
-  final user = _auth.currentUser;
-  if (user == null) return;
+  Future<void> _makeReservation(DateTimeRange range) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
 
-  // Get the device owner ID and other necessary data
-  final deviceOwnerId = _deviceData!['ownerId'];
-  final deviceName = _deviceData!['name'];
-  final pricePerDay = _deviceData!['pricePerDay'];
-  
-  // Calculate total price
-  final days = range.end.difference(range.start).inDays + 1;
-  final totalPrice = pricePerDay * days;
+    // Get the device owner ID and other necessary data
+    final deviceOwnerId = _deviceData!['ownerId'];
+    final deviceName = _deviceData!['name'];
+    final pricePerDay = _deviceData!['pricePerDay'];
 
-  await _firestore.collection('reservations').add({
-    'deviceId': widget.deviceId,
-    'deviceName': deviceName, // Store device name for easy display
-    'userId': user.uid,      // Person making the reservation
-    'renterId': user.uid,    // Same as userId (the renter)
-    'ownerId': deviceOwnerId, // The device owner
-    'startDate': Timestamp.fromDate(range.start),
-    'endDate': Timestamp.fromDate(range.end),
-    'totalPrice': totalPrice,
-    'pricePerDay': pricePerDay,
-    'status': 'pending', // Add status field
-    'createdAt': Timestamp.now(),
-  });
-}
+    // Calculate total price
+    final days = range.end.difference(range.start).inDays + 1;
+    final totalPrice = pricePerDay * days;
+
+    await _firestore.collection('reservations').add({
+      'deviceId': widget.deviceId,
+      'deviceName': deviceName,
+      'userId': user.uid,
+      'renterId': user.uid,
+      'ownerId': deviceOwnerId,
+      'startDate': Timestamp.fromDate(range.start),
+      'endDate': Timestamp.fromDate(range.end),
+      'totalPrice': totalPrice,
+      'pricePerDay': pricePerDay,
+      'status': 'pending',
+      'createdAt': Timestamp.now(),
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -758,8 +800,8 @@ Future<void> _makeReservation(DateTimeRange range) async {
                       backgroundColor:
                           _deviceData!['available'] == true
                               ? _getCategoryColor(category)
-                                      : Colors.green,
-                              foregroundColor: Colors.white,
+                              : Colors.green,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       textStyle: const TextStyle(
                         fontSize: 16,

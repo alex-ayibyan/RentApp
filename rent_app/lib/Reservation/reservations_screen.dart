@@ -13,12 +13,58 @@ class _MyReservationsScreenState extends State<MyReservationsScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  String _currentView = 'received'; // 'received' or 'made'
+  String _currentView = 'received';
+  Set<String> _removedReservationIds = {};
+
+  Future<void> _updateReservationStatus(
+    String reservationId,
+    String newStatus,
+  ) async {
+    try {
+      final reservationRef = _firestore
+          .collection('reservations')
+          .doc(reservationId);
+
+      if (newStatus == 'cancelled') {
+        await reservationRef.update({
+          'status': 'cancelled',
+          'startDate': null,
+          'endDate': null,
+        });
+      } else {
+        // Alleen status bijwerken (bijv. naar "confirmed")
+        await reservationRef.update({'status': newStatus});
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            newStatus == 'cancelled'
+                ? 'Reservatie geweigerd.'
+                : 'Reservatie bevestigd.',
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Fout bij bijwerken: $e')));
+    }
+  }
+
+  String _formatDate(dynamic timestamp) {
+    if (timestamp == null) return 'Niet beschikbaar';
+    if (timestamp is Timestamp) {
+      final date = timestamp.toDate();
+      return "${date.day}/${date.month}/${date.year}";
+    }
+    return 'Onbekend';
+  }
 
   @override
   Widget build(BuildContext context) {
     final user = _auth.currentUser!;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Reservations'),
@@ -36,9 +82,7 @@ class _MyReservationsScreenState extends State<MyReservationsScreen> {
                 }
 
                 if (snapshot.hasError) {
-                  return Center(
-                    child: Text('Error: ${snapshot.error}'),
-                  );
+                  return Center(child: Text('Error: ${snapshot.error}'));
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -52,15 +96,24 @@ class _MyReservationsScreenState extends State<MyReservationsScreen> {
                   );
                 }
 
-                final reservations = snapshot.data!.docs;
+                final reservations =
+                    snapshot.data!.docs
+                        .where(
+                          (doc) => !_removedReservationIds.contains(doc.id),
+                        )
+                        .toList();
 
                 return ListView.builder(
                   itemCount: reservations.length,
                   itemBuilder: (context, index) {
-                    final reservation = reservations[index].data() as Map<String, dynamic>;
-                    
+                    final reservation =
+                        reservations[index].data() as Map<String, dynamic>;
+
                     return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       child: ListTile(
                         leading: Container(
                           width: 50,
@@ -97,10 +150,71 @@ class _MyReservationsScreenState extends State<MyReservationsScreen> {
                                 'Gehuurd door: ${reservation['renterEmail'] ?? 'Onbekend'}',
                                 style: const TextStyle(fontSize: 12),
                               ),
+                            if (_currentView == 'received' &&
+                                reservation['status'] == 'pending')
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Row(
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.check_circle,
+                                        color: Colors.green,
+                                      ),
+                                      tooltip: 'Accepteren',
+                                      onPressed: () {
+                                        _updateReservationStatus(
+                                          reservations[index].id,
+                                          'confirmed',
+                                        );
+                                      },
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.block,
+                                        color: Colors.red,
+                                      ),
+                                      tooltip: 'Weigeren',
+                                      onPressed: () {
+                                        _updateReservationStatus(
+                                          reservations[index].id,
+                                          'cancelled',
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            if (_currentView == 'received' &&
+                                (reservation['status'] == 'confirmed' ||
+                                    reservation['status'] == 'cancelled'))
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: TextButton.icon(
+                                  onPressed: () {
+                                    setState(() {
+                                      _removedReservationIds.add(
+                                        reservations[index].id,
+                                      );
+                                    });
+                                  },
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.red,
+                                  ),
+                                  label: const Text(
+                                    'Verwijder uit lijst',
+                                    style: TextStyle(color: Colors.red),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                         trailing: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: _getStatusColor(reservation['status']),
                             borderRadius: BorderRadius.circular(20),
@@ -114,6 +228,7 @@ class _MyReservationsScreenState extends State<MyReservationsScreen> {
                             ),
                           ),
                         ),
+
                         onTap: () {
                           // Navigate to device detail or reservation detail
                           Navigator.pushNamed(
@@ -159,15 +274,9 @@ class _MyReservationsScreenState extends State<MyReservationsScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-<<<<<<< HEAD
-          _buildToggleButton('My reservations', 'received'),
-          const SizedBox(width: 8),
-          _buildToggleButton('My bookings', 'made'),
-=======
           _buildToggleButton('Ontvangen', 'received'),
           const SizedBox(width: 8),
           _buildToggleButton('Geplaatst', 'made'),
->>>>>>> bb851fc (changed theme and tested reservations with firebase)
         ],
       ),
     );
@@ -187,21 +296,11 @@ class _MyReservationsScreenState extends State<MyReservationsScreen> {
           foregroundColor: isSelected ? Colors.white : Colors.black87,
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         child: Text(label),
       ),
     );
-  }
-
-  String _formatDate(dynamic timestamp) {
-    if (timestamp is Timestamp) {
-      final date = timestamp.toDate();
-      return "${date.day}/${date.month}/${date.year}";
-    }
-    return 'Onbekend';
   }
 
   Color _getStatusColor(String? status) {
@@ -224,7 +323,7 @@ class _MyReservationsScreenState extends State<MyReservationsScreen> {
       case 'confirmed':
         return 'Bevestigd';
       case 'cancelled':
-        return 'Geannuleerd';
+        return 'Geweigerd';
       default:
         return 'Onbekend';
     }
