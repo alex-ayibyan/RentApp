@@ -14,43 +14,33 @@ class _MyReservationsScreenState extends State<MyReservationsScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   String _currentView = 'received';
-  Set<String> _removedReservationIds = {};
+  final Set<String> _removedReservationIds = {};
 
-  Future<void> _updateReservationStatus(
-    String reservationId,
-    String newStatus,
-  ) async {
-    try {
-      final reservationRef = _firestore
-          .collection('reservations')
-          .doc(reservationId);
+Future<String> _updateReservationStatus(
+  String reservationId,
+  String newStatus,
+) async {
+  try {
+    final reservationRef = _firestore
+        .collection('reservations')
+        .doc(reservationId);
 
-      if (newStatus == 'cancelled') {
-        await reservationRef.update({
-          'status': 'cancelled',
-          'startDate': null,
-          'endDate': null,
-        });
-      } else {
-        // Alleen status bijwerken (bijv. naar "confirmed")
-        await reservationRef.update({'status': newStatus});
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            newStatus == 'cancelled'
-                ? 'Reservatie geweigerd.'
-                : 'Reservatie bevestigd.',
-          ),
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Fout bij bijwerken: $e')));
+    if (newStatus == 'cancelled') {
+      await reservationRef.update({
+        'status': 'cancelled',
+        'startDate': null,
+        'endDate': null,
+      });
+      return 'Reservatie geweigerd.';
+    } else {
+      await reservationRef.update({'status': newStatus});
+      return 'Reservatie bevestigd.';
     }
+  } catch (e) {
+    return 'Fout bij bijwerken: $e';
   }
+}
+
 
   String _formatDate(dynamic timestamp) {
     if (timestamp == null) return 'Niet beschikbaar';
@@ -119,7 +109,7 @@ class _MyReservationsScreenState extends State<MyReservationsScreen> {
                           width: 50,
                           height: 50,
                           decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.1),
+                            color: Colors.green,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(

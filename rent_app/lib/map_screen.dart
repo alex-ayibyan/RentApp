@@ -284,7 +284,7 @@ class DeviceMapScreenState extends State<DeviceMapScreen> {
                     circles: [
                       CircleMarker(
                         point: _filterCenter!,
-                        color: Colors.red.withOpacity(0.3),
+                        color: Colors.red,
                         borderStrokeWidth: 2,
                         borderColor: Colors.red,
                         useRadiusInMeter: true,

@@ -20,18 +20,24 @@ class LocationPickerScreenState extends State<LocationPickerScreen> {
     _getCurrentLocation();
   }
 
-  Future<void> _getCurrentLocation() async {
-    try {
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-      setState(() {
-        _center = LatLng(position.latitude, position.longitude);
-      });
-    } catch (e) {
-      debugPrint('Error getting location: $e');
-    }
+Future<void> _getCurrentLocation() async {
+  try {
+    LocationSettings locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+    );
+
+    Position position = await Geolocator.getCurrentPosition(
+      locationSettings: locationSettings,
+    );
+
+    setState(() {
+      _center = LatLng(position.latitude, position.longitude);
+    });
+  } catch (e) {
+    debugPrint('Error getting location: $e');
   }
+}
+
 
   void _selectLocation(LatLng position) {
     setState(() {
@@ -59,7 +65,7 @@ class LocationPickerScreenState extends State<LocationPickerScreen> {
         ],
       ),
       body: _center == null
-          ? const Center(child: CircularProgressIndicator()) // Show loading spinner if location not ready
+          ? const Center(child: CircularProgressIndicator())
           : FlutterMap(
               options: MapOptions(
                 initialCenter: _center!,

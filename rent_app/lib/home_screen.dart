@@ -6,6 +6,7 @@ import 'package:rent_app/Device/device_detail_screen.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:rent_app/map_screen.dart';
 import 'package:rent_app/reservation/reservations_screen.dart';
+import 'dart:convert';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -70,19 +71,25 @@ class HomeScreenState extends State<HomeScreen> {
     _getCurrentLocation();
   }
 
-  Future<void> _getCurrentLocation() async {
-    try {
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-      setState(() {
-        _currentPosition = position;
-        _filterCenter = position;
-      });
-    } catch (e) {
-      debugPrint('Error getting location: $e');
-    }
+Future<void> _getCurrentLocation() async {
+  try {
+    LocationSettings locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+    );
+
+    Position position = await Geolocator.getCurrentPosition(
+      locationSettings: locationSettings,
+    );
+
+    setState(() {
+      _currentPosition = position;
+      _filterCenter = position;
+    });
+  } catch (e) {
+    debugPrint('Error getting location: $e');
   }
+}
+
 
   Future<void> _loadDevices() async {
     setState(() => _isLoading = true);
@@ -172,6 +179,77 @@ class HomeScreenState extends State<HomeScreen> {
         .join(' ');
   }
 
+  Widget _buildDeviceImage(Map<String, dynamic> device) {
+    if (device['imageBase64'] != null && device['imageBase64'].toString().isNotEmpty) {
+      try {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.memory(
+            base64Decode(device['imageBase64']),
+            fit: BoxFit.cover,
+            width: 60,
+            height: 60,
+            errorBuilder: (context, error, stackTrace) {
+              debugPrint('Error loading base64 image: $error');
+              return Icon(
+                Icons.devices,
+                color: Colors.green.shade200,
+                size: 30,
+              );
+            },
+          ),
+        );
+      } catch (e) {
+        debugPrint('Error decoding base64 image: $e');
+        return Icon(
+          Icons.devices,
+          color: Colors.green.shade200,
+          size: 30,
+        );
+      }
+    }
+    
+    else if (device['image'] != null && device['image'].toString().isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          device['image'],
+          fit: BoxFit.cover,
+          width: 60,
+          height: 60,
+          errorBuilder: (context, error, stackTrace) {
+            debugPrint('Error loading network image: $error');
+            return Icon(
+              Icons.devices,
+              color: Colors.green.shade200,
+              size: 30,
+            );
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+                strokeWidth: 2,
+              ),
+            );
+          },
+        ),
+      );
+    }
+    
+    else {
+      return Icon(
+        Icons.devices,
+        color: Colors.green.shade200,
+        size: 30,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -223,7 +301,6 @@ class HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
-          // Category Filter Chips
           Container(
             height: 60,
             padding: const EdgeInsets.symmetric(vertical: 8),
@@ -262,7 +339,6 @@ class HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // Location Filter Switch and Slider
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -301,7 +377,6 @@ class HomeScreenState extends State<HomeScreen> {
               ],
             ),
 
-          // Device List
           Expanded(
             child: RefreshIndicator(
               onRefresh: _loadDevices,
@@ -433,51 +508,7 @@ class HomeScreenState extends State<HomeScreen> {
                       color: Colors.grey.shade200,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child:
-                        device['image'] != null &&
-                                device['image'].toString().isNotEmpty
-                            ? ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                device['image'],
-                                fit: BoxFit.cover,
-                                width: 60,
-                                height: 60,
-                                errorBuilder: (context, error, stackTrace) {
-                                  debugPrint('Error loading image: $error');
-                                  return Icon(
-                                    Icons.devices,
-                                    color: Colors.green.shade200,
-                                    size: 30,
-                                  );
-                                },
-                                loadingBuilder: (
-                                  context,
-                                  child,
-                                  loadingProgress,
-                                ) {
-                                  if (loadingProgress == null) return child;
-                                  return Center(
-                                    child: CircularProgressIndicator(
-                                      value:
-                                          loadingProgress.expectedTotalBytes !=
-                                                  null
-                                              ? loadingProgress
-                                                      .cumulativeBytesLoaded /
-                                                  loadingProgress
-                                                      .expectedTotalBytes!
-                                              : null,
-                                      strokeWidth: 2,
-                                    ),
-                                  );
-                                },
-                              ),
-                            )
-                            : Icon(
-                              Icons.devices,
-                              color: Colors.green.shade200,
-                              size: 30,
-                            ),
+                    child: _buildDeviceImage(device),
                   ),
                   const SizedBox(width: 16),
                   Expanded(

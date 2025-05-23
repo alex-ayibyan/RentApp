@@ -6,6 +6,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:rent_app/Device/device_edit_screen.dart';
+import 'dart:convert'; // For base64Decode
 
 class DeviceDetailScreen extends StatefulWidget {
   final String deviceId;
@@ -133,6 +134,7 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
     final List<DateTime> bookedDates = await _getReservedDates();
 
     showDialog(
+      // ignore: use_build_context_synchronously
       context: context,
       builder: (context) {
         DateTime? startDate;
@@ -211,6 +213,7 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
                     await _makeReservation(
                       DateTimeRange(start: startDate!, end: endDate!),
                     );
+                    // ignore: use_build_context_synchronously
                     Navigator.pop(context);
                     _showSnackBar("Reservation successful.");
                   },
@@ -305,12 +308,10 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    // Get the device owner ID and other necessary data
     final deviceOwnerId = _deviceData!['ownerId'];
     final deviceName = _deviceData!['name'];
     final pricePerDay = _deviceData!['pricePerDay'];
 
-    // Calculate total price
     final days = range.end.difference(range.start).inDays + 1;
     final totalPrice = pricePerDay * days;
 
@@ -319,6 +320,7 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
       'deviceName': deviceName,
       'userId': user.uid,
       'renterId': user.uid,
+      'renterEmail': user.email,
       'ownerId': deviceOwnerId,
       'startDate': Timestamp.fromDate(range.start),
       'endDate': Timestamp.fromDate(range.end),
@@ -327,6 +329,98 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
       'status': 'pending',
       'createdAt': Timestamp.now(),
     });
+  }
+
+  Widget _buildDetailImage() {
+    if (_deviceData!['imageBase64'] != null && 
+        _deviceData!['imageBase64'].toString().isNotEmpty) {
+      try {
+        return Container(
+          height: 250,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+          ),
+          child: Image.memory(
+            base64Decode(_deviceData!['imageBase64']),
+            fit: BoxFit.cover,
+            width: double.infinity,
+            errorBuilder: (context, error, stackTrace) {
+              debugPrint('Error loading base64 image: $error');
+              return Center(
+                child: Icon(
+                  Icons.broken_image,
+                  size: 64,
+                  color: Colors.grey.shade400,
+                ),
+              );
+            },
+          ),
+        );
+      } catch (e) {
+        debugPrint('Error decoding base64 image: $e');
+        return Container(
+          height: 200,
+          color: Colors.grey.shade200,
+          child: Center(
+            child: Icon(
+              Icons.broken_image,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+          ),
+        );
+      }
+    }
+    
+    else if (_deviceData!['image'] != null &&
+             _deviceData!['image'].toString().isNotEmpty) {
+      return Container(
+        height: 250,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+        ),
+        child: Image.network(
+          _deviceData!['image'],
+          fit: BoxFit.cover,
+          width: double.infinity,
+          errorBuilder: (context, error, stackTrace) {
+            debugPrint('Error loading network image: $error');
+            return Center(
+              child: Icon(
+                Icons.broken_image,
+                size: 64,
+                color: Colors.grey.shade400,
+              ),
+            );
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+              ),
+            );
+          },
+        ),
+      );
+    }
+    
+    else {
+      return Container(
+        height: 200,
+        color: Colors.grey.shade200,
+        child: Center(
+          child: Icon(
+            Icons.devices,
+            size: 64,
+            color: Colors.grey.shade400,
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -364,7 +458,6 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 );
 
                 if (result == true) {
-                  // Reload the device data after editing
                   _loadDeviceData();
                 }
               },
@@ -389,60 +482,7 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
                   children: [
                     Stack(
                       children: [
-                        if (_deviceData!['image'] != null &&
-                            _deviceData!['image'].toString().isNotEmpty)
-                          Container(
-                            height: 250,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
-                            ),
-                            child: Image.network(
-                              _deviceData!['image'],
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              errorBuilder: (context, error, stackTrace) {
-                                debugPrint('Error loading image: $error');
-                                return Center(
-                                  child: Icon(
-                                    Icons.broken_image,
-                                    size: 64,
-                                    color: Colors.grey.shade400,
-                                  ),
-                                );
-                              },
-                              loadingBuilder: (
-                                context,
-                                child,
-                                loadingProgress,
-                              ) {
-                                if (loadingProgress == null) return child;
-                                return Center(
-                                  child: CircularProgressIndicator(
-                                    value:
-                                        loadingProgress.expectedTotalBytes !=
-                                                null
-                                            ? loadingProgress
-                                                    .cumulativeBytesLoaded /
-                                                loadingProgress
-                                                    .expectedTotalBytes!
-                                            : null,
-                                  ),
-                                );
-                              },
-                            ),
-                          )
-                        else
-                          Container(
-                            height: 200,
-                            color: Colors.grey.shade200,
-                            child: Center(
-                              child: Icon(
-                                Icons.devices,
-                                size: 64,
-                                color: Colors.grey.shade400,
-                              ),
-                            ),
-                          ),
+                        _buildDetailImage(),
 
                         if (category != null)
                           Positioned(
@@ -699,7 +739,8 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
                               ),
                             ),
 
-                          if (hasValidLocation)
+                          if (hasValidLocation) ...[
+                            const SizedBox(height: 24),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -779,6 +820,7 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
                                 ),
                               ],
                             ),
+                          ],
                         ],
                       ),
                     ),
@@ -800,7 +842,7 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
                       backgroundColor:
                           _deviceData!['available'] == true
                               ? _getCategoryColor(category)
-                              : Colors.green,
+                              : Colors.grey,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       textStyle: const TextStyle(
@@ -811,7 +853,7 @@ class DeviceDetailScreenState extends State<DeviceDetailScreen> {
                     child: Text(
                       _deviceData!['available'] == true
                           ? 'Make Reservation'
-                          : 'Reservation not available',
+                          : 'Not Available',
                     ),
                   ),
                 ),

@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:location/location.dart' as location_service;
 import 'package:geocoding/geocoding.dart';
 import 'package:latlong2/latlong.dart';
 
-import 'location_picker_screen.dart'; // <-- Make sure this import is correct
+import 'location_picker_screen.dart';
 
 class AddDeviceScreen extends StatefulWidget {
   const AddDeviceScreen({super.key});
@@ -20,7 +20,6 @@ class AddDeviceScreen extends StatefulWidget {
 class AddDeviceScreenState extends State<AddDeviceScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
   final ImagePicker _picker = ImagePicker();
 
   final _formKey = GlobalKey<FormState>();
@@ -28,7 +27,8 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
 
-  File? _imageFile;
+  String? _imageBase64;
+  
   bool _isLoading = false;
   bool _isAvailable = true;
   GeoPoint? _location;
@@ -40,7 +40,6 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
   ];
 
   String _selectedCategory = 'Electronics';
-
   bool _addLocation = false;
 
   @override
@@ -52,27 +51,82 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
   }
 
   Future<void> _pickImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      setState(() => _imageFile = File(image.path));
-    }
-  }
-
-  Future<String?> _uploadImage() async {
-    if (_imageFile == null) return null;
-
     try {
-      final String fileName = '${DateTime.now().millisecondsSinceEpoch}_${_auth.currentUser!.uid}';
-      final Reference storageRef = _storage.ref().child('device_images/$fileName');
-      await storageRef.putFile(_imageFile!);
-      return await storageRef.getDownloadURL();
+      final ImageSource? source = await showDialog<ImageSource>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Select Image Source'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!kIsWeb)
+                  ListTile(
+                    leading: const Icon(Icons.camera_alt),
+                    title: const Text('Camera'),
+                    onTap: () => Navigator.pop(context, ImageSource.camera),
+                  ),
+                ListTile(
+                  leading: const Icon(Icons.photo_library),
+                  title: const Text('Gallery'),
+                  onTap: () => Navigator.pop(context, ImageSource.gallery),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+
+      if (source == null) return;
+
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 70,
+      );
+      
+      if (image != null) {
+        setState(() => _isLoading = true);
+        
+        try {
+          Uint8List imageBytes = await image.readAsBytes();
+
+          if (imageBytes.length > 1024 * 1024) {
+            _showSnackBar('Image too large. Please select a smaller image.');
+            setState(() => _isLoading = false);
+            return;
+          }
+          
+          String base64String = base64Encode(imageBytes);
+          
+          setState(() {
+            _imageBase64 = base64String;
+            _isLoading = false;
+          });
+          
+          _showSnackBar('Image selected successfully (${(imageBytes.length / 1024).toStringAsFixed(1)}KB)');
+          debugPrint('Image converted to base64, size: ${base64String.length} characters');
+          
+        } catch (e) {
+          debugPrint('Error processing image: $e');
+          _showSnackBar('Failed to process image');
+          setState(() => _isLoading = false);
+        }
+      }
     } catch (e) {
-      debugPrint('Error uploading image: $e');
-      return null;
+      debugPrint('Error picking image: $e');
+      _showSnackBar('Failed to pick image: ${e.toString()}');
+      setState(() => _isLoading = false);
     }
   }
 
   Future<void> _getCurrentLocation() async {
+    if (kIsWeb) {
+      _showSnackBar('Location services not fully supported on web');
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       final locationService = location_service.Location();
@@ -161,10 +215,11 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
 
   Future<void> _saveDevice() async {
     if (!_formKey.currentState!.validate()) return;
+    
     setState(() => _isLoading = true);
 
     try {
-      String? imageUrl = await _uploadImage();
+      debugPrint('Starting device save process...');
 
       Map<String, dynamic> deviceData = {
         'name': _nameController.text.trim(),
@@ -174,25 +229,40 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
         'ownerId': _auth.currentUser!.uid,
         'ownerEmail': _auth.currentUser!.email,
         'createdAt': Timestamp.now(),
-        'image': imageUrl,
+        'imageBase64': _imageBase64, // store base64 string directly
         'category': _selectedCategory,
       };
 
       if (_addLocation && _location != null) {
         deviceData['location'] = _location;
         deviceData['address'] = _address;
+        debugPrint('Adding location data: ${_location?.latitude}, ${_location?.longitude}');
       }
 
+      debugPrint('Saving device data to Firestore...');
+      if (_imageBase64 != null) {
+        debugPrint('Image data size: ${_imageBase64!.length} characters');
+      }
+      
       await _firestore.collection('devices').add(deviceData);
+      
+      debugPrint('Device saved successfully');
+      _showSnackBar('Device saved successfully');
 
       if (!mounted) return;
       Navigator.pop(context, true);
     } catch (e) {
       debugPrint('Error saving device: $e');
-      _showSnackBar('Failed to save device');
+      if (e is FirebaseException) {
+        debugPrint('Firebase error code: ${e.code}');
+        debugPrint('Firebase error message: ${e.message}');
+      }
+      _showSnackBar('Failed to save device: ${e.toString()}');
       setState(() => _isLoading = false);
     }
   }
+
+  bool get _hasImage => _imageBase64 != null;
 
   @override
   Widget build(BuildContext context) {
@@ -202,7 +272,16 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
         backgroundColor: Colors.black87,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Processing...'),
+                ],
+              ),
+            )
           : SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -219,12 +298,14 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.grey.shade400),
                   ),
-                  child: _imageFile != null
+                  child: _hasImage
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: Image.file(
-                            _imageFile!,
+                          child: Image.memory(
+                            base64Decode(_imageBase64!),
                             fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
                           ),
                         )
                       : Column(
@@ -233,10 +314,36 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
                             Icon(Icons.add_a_photo, size: 48, color: Colors.grey.shade600),
                             const SizedBox(height: 8),
                             Text('Add Device Photo', style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Max size: 1MB',
+                              style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                            ),
                           ],
                         ),
                 ),
               ),
+              if (_hasImage)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Image selected',
+                        style: TextStyle(color: Colors.green, fontSize: 12),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _imageBase64 = null;
+                          });
+                        },
+                        child: const Text('Remove', style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                ),
               const SizedBox(height: 24),
               TextFormField(
                 controller: _nameController,
@@ -314,16 +421,15 @@ class AddDeviceScreenState extends State<AddDeviceScreen> {
               ),
               const SizedBox(height: 24),
 
-              // 🔥 Add location toggle switch
               SwitchListTile(
-                title: const Text('Add Location?'),
+                title: Text(kIsWeb ? 'Add Location (Not available on web)' : 'Add Location?'),
                 value: _addLocation,
-                onChanged: (bool value) {
+                onChanged: kIsWeb ? null : (bool value) {
                   setState(() => _addLocation = value);
                 },
               ),
 
-              if (_addLocation) ...[
+              if (_addLocation && !kIsWeb) ...[
                 Row(
                   children: [
                     Expanded(
