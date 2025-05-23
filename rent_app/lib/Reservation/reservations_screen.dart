@@ -21,7 +21,7 @@ class _MyReservationsScreenState extends State<MyReservationsScreen> {
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Reservations'),
+        title: const Text('Mijn Reservaties'),
         backgroundColor: Colors.black87,
       ),
       body: Column(
@@ -159,15 +159,9 @@ class _MyReservationsScreenState extends State<MyReservationsScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-<<<<<<< HEAD
-          _buildToggleButton('My reservations', 'received'),
-          const SizedBox(width: 8),
-          _buildToggleButton('My bookings', 'made'),
-=======
           _buildToggleButton('Ontvangen', 'received'),
           const SizedBox(width: 8),
           _buildToggleButton('Geplaatst', 'made'),
->>>>>>> bb851fc (changed theme and tested reservations with firebase)
         ],
       ),
     );
